@@ -527,7 +527,7 @@
       </div>
       <div class="border-t border-gray-600 pt-3">
        <div id="upgradeCostDiv" class="flex justify-between mb-3"><span class="text-white font-bold">업그레이드 비용:</span> <span id="nextUpgradeCost" class="text-yellow-400 font-bold">25💰</span>
-       </div><button id="upgradeBtn" class="upgrade-btn w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-bold py-2 px-4 rounded-lg transition-all"> ⬆️ 업그레이드 </button>
+       </div><button id="upgradeBtn" class="upgrade-btn w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-bold py-2 px-4 rounded-lg transition-all"> ⬆️️ 업그레이드 </button>
       </div>
       <div class="text-xs text-gray-400 mt-2">
        <p>• 소총 피해 +0.3</p>
@@ -708,14 +708,28 @@
     
     let config = { ...defaultConfig };
     
+    // '랜덤' 적이 죽었을 때 변신하는 적 목록
+    const random_enemy = [
+      'haste', 
+      'leader', 
+      'bug', 
+      'splitterC', 
+      'blaze', 
+      'shooter', 
+      'protect', 
+      'rage',
+      'random'
+    ];
+    
     // 게임 상태
-    let totalTokens = 0; // 기존 저장값 호환용, 이제 업그레이드는 머니를 사용합니다.
+    let totalTokens = 0; 
     let selectedMap = 'forest';
     const activeModifiers = new Set();
     let bestWaveReached = 1;
     let modifiersUnlocked = false;
     const achievementState = { kills100:false, kills1500:false, kills20000:false, wave300:false, glass50:false, ammoSaver:false };
     let voidMode = false;
+    let archiveMode = false;
     let metaUpgrades = { base: 0, damage: 0, slow: 0, thorn: 0, detector: false, armorBreak: false };
     let weapon = 'rifle';
     let turretOwned = false;
@@ -765,289 +779,37 @@
     
     // 적 타입 정의
     const enemyTypes = {
-      normal: {
-        health: 2.5,
-        speed: 0.9,
-        damage: 0.8,
-        color: 'from-green-600 to-green-500',
-        emoji: '👹',
-        size: 50
-      },
-      slow: {
-        health: 7.5,
-        speed: 0.5,
-        damage: 1.5,
-        color: 'from-blue-600 to-blue-500',
-        emoji: '👺',
-        size: 60
-      },
-      fast: {
-        health: 2,
-        speed: 1.8,
-        damage: 0.8,
-        color: 'from-red-600 to-red-500',
-        emoji: '😈',
-        size: 40
-      },
-      shield: {
-        health: 5,
-        speed: 0.75,
-        damage: 5,
-        color: 'from-cyan-600 to-blue-500',
-        emoji: '🛡️',
-        size: 58,
-        shield: 3,
-        shieldRegen: true
-      },
-      heavy: {
-        health: 20,
-        speed: 0.45,
-        damage: 25,
-        armor: 0.1,
-        color: 'from-slate-700 to-gray-500',
-        emoji: '🗿',
-        size: 72
-      },
-      splitterA: {
-        health: 3,
-        speed: 2,
-        damage: 5,
-        color: 'from-lime-600 to-green-500',
-        emoji: '🟢',
-        size: 42
-      },
-      splitterB: {
-        health: 6.5,
-        speed: 1.25,
-        damage: 15,
-        color: 'from-yellow-600 to-orange-500',
-        emoji: '🟠',
-        size: 52,
-        splitsInto: 'splitterA',
-        splitCount: 3
-      },
-      splitterC: {
-        health: 25,
-        speed: 0.5,
-        damage: 50,
-        color: 'from-fuchsia-700 to-purple-500',
-        emoji: '🟣',
-        size: 82,
-        splitsInto: 'splitterB',
-        splitCount: 4
-      },
-      haste: { 
-        health: 12,
-        speed: 4,
-        damage: 20,
-        color: 'from-yellow-500 to-amber-400', 
-        emoji: '⚡',
-        size: 54, dodge: 0.2
-        },
-      regen: {
-        health: 15,
-        speed: 1.2,
-        damage: 40,
-        color: 'from-emerald-600 to-green-400',
-        emoji: '🧬',
-        size: 56, regen: 0.1
-        },
-      revive: {
-        health: 25,
-        speed: 0.6,
-        damage: 100,
-        color: 'from-violet-700 to-purple-500',
-        emoji: '♻️',
-        size: 62
-        },
-      dummy: {
-        health: 60,
-        speed: 0,
-        damage: 0,
-        color: 'from-gray-600 to-gray-400',
-        emoji: '🎭',
-        size: 64
-        },
-      leader: {
-        health: 30,
-        speed: 0.6,
-        damage: 200,
-        color: 'from-orange-700 to-red-500',
-        emoji: '👑',
-        size: 64
-        },
-      bug: {
-        health: 1,
-        speed: 0,
-        damage: 5000,
-        color: 'from-lime-700 to-lime-400',
-        emoji: '🐛',
-        size: 42,
-        dodge: 0.8
-        },
-      glitch: {
-        health: 3,
-        speed: 0,
-        damage: Infinity,
-        color: 'from-fuchsia-700 to-purple-500',
-        emoji: '🌀',
-        size: 46,
-        dodge: 0.8,
-        absolute: true,
-        glitch: true
-        },
-      glitchPhantom: {
-        health: 0,
-        speed: 1,
-        damage: 0,
-        color: 'from-purple-950 to-fuchsia-700',
-        emoji: '👁️',
-        size: 38,
-        phantom: true,
-        displayName: 'eye'
-      },
-      voidPulse: {
-        health: 1,
-        speed: 1.2,
-        damage: Infinity,
-        color: 'from-purple-700 to-fuchsia-500',
-        emoji: '🕳️',
-        size: 30,
-        voidPulse: true
-      },
-      hide: {
-        health: 20,
-        speed: 2,
-        damage: 100,
-        color: 'from-slate-800 to-gray-600',
-        emoji: '👤',
-        size: 58,
-        dodge: 0.15,
-        hidden: true
-      },
-      metal: {
-        health: 30,
-        speed: 0.1,
-        damage: 5,
-        color: 'from-zinc-600 to-slate-300',
-        emoji: '⚙️',
-        size: 64,
-        psn: 5,
-        fixedHealth: true
-      },
-      darkSplitter: {
-        health: 60,
-        speed: 0.3,
-        damage: 1000,
-        color: 'from-black to-black',
-        emoji: '',
-        size: 86,
-        darkBoss: true,
-        solidBlack: true
-      },
-      cyborg: {
-        health: 125,
-        speed: 0.15,
-        damage: 3000,
-        color: 'from-cyan-800 to-slate-400',
-        emoji: '🤖',
-        size: 90,
-        shield: 15,
-        cyborg: true,
-        psn: 30
-      },
-      voidGuard: {
-        health: 1200,
-        speed: 0.5,
-        damage: Infinity,
-        armor: 0.3,
-        color: 'from-gray-950 to-black',
-        emoji: '✡️',
-        size: 76,
-        voidOnly: true
-      },
-      voider: {
-        health: 3000,
-        speed: 0.4,
-        damage: Infinity,
-        armor: 0.2,
-        color: 'from-gray-950 to-black',
-        emoji: '🔯',
-        size: 82,
-        voidOnly: true,
-        voidPulse: true
-      },
-      darkVoid: {
-        health: 10000,
-        speed: 0.1,
-        damage: Infinity,
-        armor: 0.05,
-        color: 'from-purple-950 to-purple-700',
-        emoji: '🖤',
-        size: 100,
-        voidOnly: true
-      },
-      protect: {
-        health: 20,
-        speed: 1,
-        damage: 5,
-        color: 'from-emerald-700 to-green-400',
-        emoji: '🪖',
-        size: 52
-      },
-      shooter: {
-        health: 50,
-        speed: 1.5,
-        damage: 0,
-        color: 'from-sky-700 to-cyan-400',
-        emoji: '🏹',
-        size: 52,
-        shooter: true
-      },
-      blaze: {
-        health: 50,
-        speed: 2,
-        damage: 40,
-        color: 'from-orange-700 to-red-500',
-        emoji: '🔥',
-        size: 52,
-        blaze: true
-        },
-      phishing: {
-        health: 1000,
-        speed: 0.5,
-        damage: 90,
-        color: 'from-yellow-700 to-amber-400',
-        emoji: '💰',
-        size: 58,
-        dodge: 0.99
-        },
-      flock: {
-        health: 40,
-        speed: 0.6,
-        damage: 10,
-        color: 'from-pink-700 to-fuchsia-400',
-        emoji: '🎃',
-        size: 44
-        },
-      random: {
-        health: 50,
-        speed: 0.8,
-        damage: 60,
-        color: 'from-violet-700 to-indigo-400',
-        emoji: '❓',
-        size: 52,
-        randomDamage: true
-        },
-      rage: {
-        health: 80,
-        speed: 0.5,
-        damage: 200,
-        color: 'from-red-900 to-rose-500',
-        emoji: '😡',
-        size: 58,
-        rage: true
-        }
+      normal: { health: 2.5, speed: 0.9, damage: 0.8, color: 'from-green-600 to-green-500', emoji: '👹', size: 50 },
+      slow: { health: 7.5, speed: 0.5, damage: 1.5, color: 'from-blue-600 to-blue-500', emoji: '👺', size: 60 },
+      fast: { health: 2, speed: 1.8, damage: 0.8, color: 'from-red-600 to-red-500', emoji: '😈', size: 40 },
+      shield: { health: 5, speed: 0.75, damage: 5, color: 'from-cyan-600 to-blue-500', emoji: '🛡️', size: 58, shield: 3, shieldRegen: true },
+      heavy: { health: 20, speed: 0.45, damage: 25, armor: 0.1, color: 'from-slate-700 to-gray-500', emoji: '🗿', size: 72 },
+      splitterA: { health: 3, speed: 2, damage: 5, color: 'from-lime-600 to-green-500', emoji: '🟢', size: 42 },
+      splitterB: { health: 6.5, speed: 1.25, damage: 15, color: 'from-yellow-600 to-orange-500', emoji: '🟠', size: 52, splitsInto: 'splitterA', splitCount: 3 },
+      splitterC: { health: 25, speed: 0.5, damage: 50, color: 'from-fuchsia-700 to-purple-500', emoji: '🟣', size: 82, splitsInto: 'splitterB', splitCount: 4 },
+      haste: { health: 12, speed: 4, damage: 20, color: 'from-yellow-500 to-amber-400', emoji: '⚡', size: 54, dodge: 0.2 },
+      regen: { health: 15, speed: 1.2, damage: 40, color: 'from-emerald-600 to-green-400', emoji: '🧬', size: 56, regen: 0.1 },
+      revive: { health: 25, speed: 0.6, damage: 100, color: 'from-violet-700 to-purple-500', emoji: '♻️', size: 62 },
+      dummy: { health: 60, speed: 0, damage: 0, color: 'from-gray-600 to-gray-400', emoji: '🎭', size: 64 },
+      leader: { health: 30, speed: 0.6, damage: 200, color: 'from-orange-700 to-red-500', emoji: '👑', size: 64 },
+      bug: { health: 1, speed: 0, damage: 5000, color: 'from-lime-700 to-lime-400', emoji: '🐛', size: 42, dodge: 0.8 },
+      glitch: { health: 3, speed: 0, damage: Infinity, color: 'from-fuchsia-700 to-purple-500', emoji: '🌀', size: 46, dodge: 0.8, absolute: true, glitch: true },
+      glitchPhantom: { health: 0, speed: 1, damage: 0, color: 'from-purple-950 to-fuchsia-700', emoji: '👁️', size: 38, phantom: true, displayName: 'eye' },
+      voidPulse: { health: 1, speed: 1.2, damage: Infinity, color: 'from-purple-700 to-fuchsia-500', emoji: '🕳️️', size: 30, voidPulse: true },
+      hide: { health: 20, speed: 2, damage: 100, color: 'from-slate-800 to-gray-600', emoji: '👤', size: 58, dodge: 0.15, hidden: true },
+      metal: { health: 30, speed: 0.1, damage: 5, color: 'from-zinc-600 to-slate-300', emoji: '⚙️', size: 64, psn: 5, fixedHealth: true },
+      darkSplitter: { health: 60, speed: 0.3, damage: 1000, color: 'from-black to-black', emoji: '', size: 86, darkBoss: true, solidBlack: true },
+      cyborg: { health: 125, speed: 0.15, damage: 3000, color: 'from-cyan-800 to-slate-400', emoji: '🤖', size: 90, shield: 15, cyborg: true, psn: 30 },
+      voidGuard: { health: 1200, speed: 0.5, damage: Infinity, armor: 0.3, color: 'from-gray-950 to-black', emoji: '✡️', size: 76, voidOnly: true },
+      voider: { health: 3000, speed: 0.4, damage: Infinity, armor: 0.2, color: 'from-gray-950 to-black', emoji: '🔯', size: 82, voidOnly: true, voidPulse: true },
+      darkVoid: { health: 10000, speed: 0.1, damage: Infinity, armor: 0.05, color: 'from-purple-950 to-purple-700', emoji: '🖤', size: 100, voidOnly: true },
+      protect: { health: 20, speed: 1, damage: 5, color: 'from-emerald-700 to-green-400', emoji: '🪖', size: 52 },
+      shooter: { health: 50, speed: 1.5, damage: 0, color: 'from-sky-700 to-cyan-400', emoji: '🏹', size: 52, shooter: true },
+      blaze: { health: 50, speed: 2, damage: 40, color: 'from-orange-700 to-red-500', emoji: '🔥', size: 52, blaze: true },
+      phishing: { health: 1000, speed: 0.5, damage: 90, color: 'from-yellow-700 to-amber-400', emoji: '💰', size: 58, dodge: 0.99 },
+      flock: { health: 40, speed: 0.6, damage: 10, color: 'from-pink-700 to-fuchsia-400', emoji: '🎃', size: 44 },
+      random: { health: 50, speed: 0.8, damage: 60, color: 'from-violet-700 to-indigo-400', emoji: '❓', size: 52, randomDamage: true },
+      rage: { health: 80, speed: 0.5, damage: 200, color: 'from-red-900 to-rose-500', emoji: '😡', size: 58, rage: true }
     };
     
     // 적 생성
@@ -1069,12 +831,6 @@
       let selectedType = forcedType || 'normal';
       let specialSelected = false;
       const availableSpecials = [];
-      if (gameState.wave >= 4) availableSpecials.push('protect');
-      if (gameState.wave >= 6) availableSpecials.push('shooter');
-      if (gameState.wave >= 8) availableSpecials.push('blaze');
-      if (gameState.wave >= 10) availableSpecials.push('flock');
-      if (gameState.wave >= 12) availableSpecials.push('random');
-      if (gameState.wave >= 14) availableSpecials.push('rage');
       if (gameState.wave >= 21) availableSpecials.push('haste');
       if (gameState.wave >= 31) availableSpecials.push('regen');
       if (gameState.wave >= 36) availableSpecials.push('revive');
@@ -1110,19 +866,21 @@
           else selectedType = ['haste','regen','revive','dummy','leader','bug','hide','metal','darkSplitter','cyborg'][Math.floor(Math.random() * 10)];
         }
       }
-      if (selectedType === 'flock' && !spawnX) {
+      if (selectedType === 'flock' && spawnX === null) {
         for (let flockIndex = 0; flockIndex < 4; flockIndex++) spawnEnemy('flock', false, null, spawnY);
       }
       const typeData = enemyTypes[selectedType];
-      const y = spawnY ?? (Math.random() * (areaRect.height - typeData.size - 100) + 50);
+      const startX = spawnX !== null ? spawnX : -typeData.size;
+      const startY = spawnY !== null ? spawnY : (Math.random() * (areaRect.height - typeData.size - 100) + 50);
+      
       const boss = isBoss || (gameState.wave >= 10 && gameState.wave % 10 === 0 && selectedType === 'heavy') || (gameState.wave >= 20 && gameState.wave % 20 === 0 && selectedType === 'splitterC');
       const roll = Math.random();
       const effect = boss || typeData.darkBoss ? 'boss' : (gameState.wave >= 50 && roll < 0.08 ? 'absolute' : gameState.wave >= 41 && roll < 0.16 ? 'bulletproof' : gameState.wave >= 8 && roll < 0.28 ? 'tough' : gameState.wave >= 31 && roll < 0.38 ? 'haste' : '');
       const absoluteDamage = effect === 'absolute' || selectedType === 'glitch' ? 1 : 0;
-      const multiplier = boss ? 1.2 : 1;
       const voidExclusive = ['voidGuard','voider','darkVoid'].includes(selectedType); const voidMultiplier = voidMode && !voidExclusive ? 10 : 1;
+      
       const enemy = {
-        id: Date.now() + Math.random(), type: selectedType, x: spawnX ?? -typeData.size, y: y,
+        id: Date.now() + Math.random(), type: selectedType, x: startX, y: startY,
         health: typeData.fixedHealth ? typeData.health : typeData.health * Math.pow(1.02, Math.max(0, gameState.wave - 1)) * voidMultiplier,
         maxHealth: typeData.fixedHealth ? typeData.health : typeData.health * Math.pow(1.02, Math.max(0, gameState.wave - 1)) * voidMultiplier,
         speed: typeData.speed * 60 * (1 - metaUpgrades.slow * 0.1) * (boss ? 1.1 : 1),
@@ -1137,6 +895,7 @@
         dummyUntil: selectedType === 'dummy' ? Date.now() + 15000 : 0,
         leaderBoost: false
       };
+      
       const customEffect = document.getElementById('spawnEffect')?.value || '';
       const customDodge = Math.max(0, Math.min(100, Number(document.getElementById('spawnDodge')?.value) || 0)) / 100;
       const customArmor = Math.max(0, Math.min(95, Number(document.getElementById('spawnArmor')?.value) || 0)) / 100;
@@ -1151,7 +910,7 @@
       const el = document.createElement('div');
       el.className = `enemy absolute flex flex-col items-center transition-transform`;
       el.style.left = enemy.x + 'px';
-      el.style.top = enemy.y + 'px';
+      el.style.top = typeof enemy.y === 'number' ? enemy.y + 'px' : enemy.y;
       el.style.width = typeData.size + 'px';
       el.innerHTML = `
         <div class="w-full h-2 bg-gray-700 rounded-full mb-1 overflow-hidden">
@@ -1270,7 +1029,6 @@
     function damageBase(damage) {
       if (activeModifiers.has('glass')) gameState.baseHealth = 0;
       else gameState.baseHealth = Math.max(0, gameState.baseHealth - damage);
-      if (archiveMode) updateArchiveHud();
       if (metaUpgrades.thorn > 0) {
         const thornDamage = damage * metaUpgrades.thorn * 0.05;
         gameState.enemies.slice().forEach(other => { if (other) hitEnemy(other, thornDamage); });
@@ -1281,13 +1039,6 @@
       base.classList.add('base-hit');
       
       if (gameState.baseHealth <= 0) {
-        if (archiveMode) {
-          archiveMode = false;
-          clearInterval(archiveBreakTimer);
-          clearInterval(archiveWaveTimer);
-          document.getElementById('archiveBreakBox')?.remove();
-          archiveScreen.classList.add('hidden');
-        }
         gameOver();
       }
     }
@@ -1383,6 +1134,7 @@
       const weaponData = weaponStats.rifle;
       if (enemy.hidden && metaUpgrades.detector !== true) return;
       if (forcedDamage === null && enemy.dodge && Math.random() < enemy.dodge) return;
+      
       let incoming = enemy.randomDamage ? (enemy.randomRoll ??= 1 + Math.floor(Math.random() * 10)) : (enemy.type === 'metal' ? 1 : (forcedDamage ?? (((enemy.effect === 'absolute' || enemy.type === 'metal' || enemy.type === 'glitch') && !metaUpgrades.armorBreak) || enemy.type === 'glitch' ? enemy.absoluteDamage || 0 : gameState.damage * weaponData.damage * (1 + metaUpgrades.damage * 0.1))));
       if (enemy.shield > 0) {
         enemy.shield = Math.max(0, enemy.shield - incoming);
@@ -1399,10 +1151,17 @@
       setTimeout(() => enemy.element.classList.remove('hit-flash'), 100);
       
       const healthBar = enemy.element.querySelector('.health-bar');
-      const percent = Math.max(0, (enemy.health / enemy.maxHealth) * 100);
-      healthBar.style.width = percent + '%';
+      if (healthBar) {
+        const percent = Math.max(0, (enemy.health / enemy.maxHealth) * 100);
+        healthBar.style.width = percent + '%';
+      }
       
       if (enemy.health <= 0) {
+        // 💡 '랜덤' 적이 죽은 경우 새로운 적으로 변신스폰
+        if (enemy.type === 'random') {
+          const nextType = random_enemy[Math.floor(Math.random() * random_enemy.length)];
+          spawnEnemy(nextType, false, enemy.x, enemy.y);
+        }
         if (enemy.type === 'rage') enemy.speed = enemy.baseSpeed;
         if (enemy.type === 'revive') {
           spawnEnemy('dummy', false, enemy.x, enemy.y);
@@ -1411,8 +1170,7 @@
         if (index > -1) {
           createExplosion(enemy.x, enemy.y);
           
-          // 돈 획득
-          const moneyGain = enemy.type === 'leader' ? 0 : (moneyDrops[enemy.type] || 0);
+          const moneyGain = enemy.type === 'leader' ? 0 : (moneyDrops[enemy.type] || 5);
           gameState.money += moneyGain;
           moneyDisplay.textContent = gameState.money;
           if (enemyTypes[enemy.type].splitsInto) {
@@ -1462,7 +1220,6 @@
       return [200, 500, 1500, 5000][metaUpgrades.thorn] || 0;
     }
     function buyTurret() {
-      const btn = document.getElementById('turretUpgradeBtn');
       if (turretOwned || gameState.wave < 11 || gameState.money < 1000) return;
       gameState.money -= 1000; turretOwned = true; updateUI();
     }
@@ -1471,7 +1228,7 @@
       if (max && metaUpgrades[kind] >= max) return;
       const cost = tokenCost(kind);
       if (gameState.money < cost) return;
-      gameState.money -= cost; metaUpgrades[kind]; metaUpgrades[kind]++;
+      gameState.money -= cost; metaUpgrades[kind]++;
       if (kind === 'base') { gameState.maxHealth += 10; gameState.baseHealth += 10; updateHealthDisplay(); }
       updateUI();
     }
@@ -1507,7 +1264,6 @@
       if (panelFireRate) panelFireRate.textContent = (1000 / gameState.fireRate).toFixed(1);
       document.getElementById('weaponUpgradeTitle').textContent = '🔫 ' + weaponStats[weapon].name + ' 업그레이드';
       
-      // 업그레이드 패널
       document.getElementById('panelTokens').textContent = gameState.money;
       const detectorBtn = document.getElementById('detectorBtn'), armorBreakBtn = document.getElementById('armorBreakBtn');
       detectorBtn.disabled = metaUpgrades.detector || gameState.wave < 25 || gameState.money < 1000;
@@ -1519,7 +1275,6 @@
       document.getElementById('turretVisual').style.opacity = turretOwned ? '1' : '0';
       turretBtn.disabled = turretOwned || gameState.wave < 11 || gameState.money < 1000;
       turretBtn.textContent = turretOwned ? '✅ 터렛 설치 완료' : (gameState.wave < 11 ? '🔒 11웨이브부터 구매' : '🔫 1000💰에 구매');
-      const metaLabels = { base: ['baseUpgradeInfo','baseUpgradeLevel','baseUpgradeCost'], damage: ['damageUpgradeInfo','damageUpgradeLevel','damageUpgradeCost'], slow: ['slowUpgradeInfo','slowUpgradeLevel','slowUpgradeCost'], thorn: ['thornUpgradeInfo','thornUpgradeLevel','thornUpgradeCost'] };
       document.getElementById('baseUpgradeInfo').textContent = gameState.maxHealth;
       document.getElementById('baseUpgradeLevel').textContent = metaUpgrades.base;
       document.getElementById('baseUpgradeCost').textContent = tokenCost('base') + '💰';
@@ -1690,11 +1445,9 @@
     let lastTime = 0;
     let spawnTimer = 0;
     let bugFloor = false;
-    let voiderPulseTimer = 0;
     
     function gameLoop(currentTime) {
-      // 기록실은 자체 타이머를 사용하므로 일반 플로어 루프가 절대 함께 실행되지 않습니다.
-      if (!gameState.isRunning || archiveMode || !archiveScreen.classList.contains('hidden')) return;
+      if (!gameState.isRunning) return;
       
       const deltaTime = (currentTime - lastTime) / 1000;
       lastTime = currentTime;
@@ -1724,7 +1477,7 @@
     
     // 업그레이드 패널 열기/닫기
     function openUpgradePanel() {
-      upgradePanel.style.zIndex = archiveMode ? '140' : '60';
+      upgradePanel.style.zIndex = '60';
       upgradePanel.style.transform = 'translateX(0)';
       updateUI();
     }
@@ -1733,89 +1486,17 @@
       upgradePanel.style.transform = 'translateX(100%)';
     }
     
-    // 포기 확인은 브라우저 대화상자 대신 화면 안에서 표시합니다.
     function showQuitPrompt() {
-      if ((!gameState.isRunning && !archiveMode) || document.getElementById('quitPrompt')) return;
+      if (!gameState.isRunning || document.getElementById('quitPrompt')) return;
       gameState.isRunning = false;
       const prompt = document.createElement('div');
       prompt.id = 'quitPrompt';
       prompt.className = 'absolute inset-0 z-[110] flex items-center justify-center bg-black/80';
       prompt.innerHTML = '<div class="rounded-2xl border-2 border-red-500 bg-gray-900 p-7 text-center text-white"><h2 class="mb-3 text-2xl font-bold text-red-300">게임을 포기하시겠습니까?</h2><p class="mb-5 text-gray-300">현재 진행 상황은 사라집니다.</p><div class="flex gap-3 justify-center"><button id="quitYes" class="rounded-lg bg-red-600 px-6 py-2 font-bold">예</button><button id="quitNo" class="rounded-lg bg-gray-600 px-6 py-2 font-bold">아니오</button></div></div>';
       document.getElementById('gameContainer').appendChild(prompt);
-      prompt.querySelector('#quitYes').onclick = () => { prompt.remove(); archiveMode=false; clearInterval(archiveBreakTimer); clearInterval(archiveWaveTimer); document.getElementById('archiveBreakBox')?.remove(); archiveScreen.classList.add('hidden'); gameState.enemies.forEach(e => e.element.remove()); gameState.enemies = []; gameOverScreen.classList.add('hidden'); waveBreakScreen.classList.add('hidden'); cheatPanel.classList.add('hidden'); startScreen.classList.remove('hidden'); };
+      prompt.querySelector('#quitYes').onclick = () => { prompt.remove(); gameState.enemies.forEach(e => e.element.remove()); gameState.enemies = []; gameOverScreen.classList.add('hidden'); waveBreakScreen.classList.add('hidden'); cheatPanel.classList.add('hidden'); startScreen.classList.remove('hidden'); };
       prompt.querySelector('#quitNo').onclick = () => { prompt.remove(); gameState.isRunning = true; lastTime = performance.now(); requestAnimationFrame(gameLoop); };
     }
-
-    // 기록실 플로어: A~Z, 섹션마다 10웨이브
-    const archiveScreen = document.getElementById('archiveScreen');
-    const archiveGameArea = document.getElementById('archiveGameArea');
-    const archiveContinue = document.getElementById('archiveContinue');
-    let archiveMode = false, archiveSection = 0, archiveWave = 1, archiveSkipCost = 50, lastArchiveShot = 0;
-    const archiveTypes = {
-      protect:{name:'프로텍트',emoji:'▣',health:20,speed:1,damage:5}, shooter:{name:'슈터',emoji:'☻',health:50,speed:1.5,damage:30}, blaze:{name:'블레이즈',emoji:'◆',health:50,speed:2,damage:40}, phishing:{name:'피싱',emoji:'$',health:1000,speed:.5,damage:90}, flock:{name:'플록',emoji:'✿',health:40,speed:.6,damage:10}, random:{name:'랜덤',emoji:'?',health:50,speed:.8,damage:60}, rage:{name:'레이지',emoji:'◉',health:80,speed:.5,damage:200}
-    };
-    function archiveName(){ return String.fromCharCode(65 + archiveSection); }
-    function updateArchiveHud(){ document.getElementById('archiveSectionLabel').textContent=archiveName(); document.getElementById('archiveSectionHud').textContent=archiveName(); document.getElementById('archiveWaveHud').textContent=archiveWave; document.getElementById('archiveMoneyHud').textContent=safeMoney(gameState.money); const healthHud=document.getElementById('archiveHealthHud'); if(healthHud) healthHud.textContent=`${formatNumber(gameState.baseHealth)} / ${formatNumber(gameState.maxHealth)}`; const rateHud=document.getElementById('archiveRateHud'); if(rateHud) rateHud.textContent=(1000/gameState.fireRate).toFixed(1)+'발/초'; }
-    function archiveSpawn(type, waveSet=archiveWaveEnemies){ const d=archiveTypes[type]; if(!d) return; const el=document.createElement('button'); let hp=d.health; let rageSpeed=d.speed; let randomDamage=1; let hoverStarted=Date.now(); waveSet.add(el); el.className='enemy absolute z-10 flex flex-col items-center text-white'; el.style.left='-50px'; el.style.top=(20+Math.random()*65)+'%'; el.style.width='72px'; el.title=d.name; el.innerHTML=`<div class="mb-1 h-2 w-full overflow-hidden rounded-full bg-gray-700"><div class="archive-hp-bar h-full bg-gradient-to-r from-red-500 to-green-400" style="width:100%"></div></div><div class="flex h-12 w-12 items-center justify-center text-4xl leading-none">${d.emoji}</div><div class="mt-1 whitespace-nowrap rounded bg-black/70 px-1 text-[10px] font-bold text-white">${d.name}</div>`; archiveGameArea.appendChild(el); let x=-50; let removed=false; const finishEnemy=()=>{ if(removed)return; removed=true; clearInterval(timer); waveSet.delete(el); el.remove(); finishArchiveWaveIfReady(); }; const timer=setInterval(()=>{ if(!archiveMode){finishEnemy();return;} if(type==='rage' && el.matches(':hover')) rageSpeed*=1.05; x+=rageSpeed; el.style.left=x+'px'; if(x>archiveGameArea.clientWidth-70){ finishEnemy(); damageBase(type==='blaze' ? d.damage+10 : type==='random' ? randomDamage : d.damage); updateArchiveHud(); } },50); el.onmouseenter=()=>{hoverStarted=Date.now();}; el.onmouseleave=()=>{}; el.onclick=(event)=>{ event.stopPropagation(); const now=Date.now(); if(now-lastArchiveShot<gameState.fireRate)return; lastArchiveShot=now; if(type==='phishing' && Math.random()<.9)return; if(type==='random') randomDamage=1+Math.floor(Math.random()*10); const damage=type==='random' ? randomDamage : Math.max(0.1, gameState.damage * weaponStats.rifle.damage * (1 + metaUpgrades.damage * 0.1)); hp=Math.max(0,hp-damage); const bar=el.querySelector('.archive-hp-bar'); if(bar) bar.style.width=(hp/d.health*100)+'%'; el.classList.add('hit-flash'); setTimeout(()=>el.classList.remove('hit-flash'),100); if(hp<=0){ if(type==='ransom')gameState.money=Infinity; else gameState.money+=5; updateArchiveHud(); finishEnemy(); } }; }
-    let archiveBreakTimer = null;
-    let archiveWaveTimer = null;
-    let archiveSpawnTimer = null;
-    let archiveWaveEnemies = new Set();
-    function finishArchiveWaveIfReady(){
-      if(!archiveMode || gameState.baseHealth<=0) return;
-      if(archiveWaveEnemies.size>0 || archiveSpawnTimer!==null) return;
-      if(archiveWave>=10) finishArchiveSection();
-      else { archiveWave++; startArchiveBreak(); }
-    }
-    function startArchiveWave(){
-      if(!archiveMode || gameState.baseHealth<=0) return;
-      archiveWave=Math.max(1,archiveWave); updateArchiveHud();
-      const total=4+archiveWave; let made=0;
-      clearInterval(archiveWaveTimer); clearTimeout(archiveWaveTimer); clearTimeout(archiveSpawnTimer);
-      archiveWaveEnemies = new Set();
-      archiveSpawnTimer=setInterval(()=>{
-        if(!archiveMode || gameState.baseHealth<=0){ clearInterval(archiveSpawnTimer); archiveSpawnTimer=null; return; }
-        let pool=['protect'];
-        const cave=selectedMap==='cave';
-        if(cave && archiveWave>=4) pool.push('protect');
-        if((cave&&archiveWave>=22)||(!cave&&archiveWave>=46)) pool.push('shooter');
-        if((cave&&archiveWave>=27)||(!cave&&archiveWave>=48)) pool.push('blaze');
-        if((cave&&archiveWave>=35)||(!cave&&archiveWave>=51)) pool.push('phishing');
-        if((cave&&archiveWave>=29)||(!cave&&archiveWave>=54)) pool.push('flock','flock','flock','flock','flock');
-        if((cave&&archiveWave>=34)||(!cave&&archiveWave>=58)) pool.push('rage');
-        const chosen=pool[Math.floor(Math.random()*pool.length)];
-        if(chosen==='flock'){ for(let f=0;f<5;f++) archiveSpawn('flock', archiveWaveEnemies); }
-        else archiveSpawn(chosen, archiveWaveEnemies);
-        if(++made>=total){ clearInterval(archiveSpawnTimer); archiveSpawnTimer=null; finishArchiveWaveIfReady(); }
-      },700);
-    }
-    function startArchiveBreak(){
-      if(!archiveMode || gameState.baseHealth<=0) return;
-      clearInterval(archiveBreakTimer);
-      let remaining=30;
-      archiveContinue.classList.add('hidden'); archiveContinue.classList.remove('flex');
-      const breakBox=document.createElement('div'); breakBox.id='archiveBreakBox';
-      breakBox.className='absolute inset-0 z-[125] flex items-center justify-center bg-black/75';
-      breakBox.innerHTML='<div class="w-[min(90%,30rem)] rounded-2xl border-2 border-cyan-500 bg-gray-900 p-7 text-center text-white"><div class="text-5xl mb-3">☕</div><h3 class="text-2xl font-bold text-cyan-300 mb-3">웨이브 준비</h3><p class="mb-4">다음 웨이브까지 <b id="archiveBreakSeconds" class="text-yellow-300">30</b>초</p><div class="flex gap-3"><button id="archiveShopBtn" class="flex-1 rounded-lg bg-purple-600 px-4 py-3 font-bold">🏪 업그레이드</button><button id="archiveSkipBtn" class="flex-1 rounded-lg bg-cyan-600 px-4 py-3 font-bold">⚡ 바로 시작</button></div></div>';
-      archiveScreen.appendChild(breakBox);
-      const finish=()=>{ clearInterval(archiveBreakTimer); breakBox.remove(); closeUpgradePanel(); startArchiveWave(); };
-      breakBox.querySelector('#archiveSkipBtn').onclick=finish;
-      breakBox.querySelector('#archiveShopBtn').onclick=()=>openUpgradePanel();
-      archiveBreakTimer=setInterval(()=>{ remaining--; const label=breakBox.querySelector('#archiveBreakSeconds'); if(label) label.textContent=remaining; if(remaining<=0) finish(); },1000);
-    }
-    function openArchive(section=0){
-      // 본 플로어의 적·루프·휴식 타이머를 먼저 멈춰 중복 진행을 차단합니다.
-      gameState.isRunning=false;
-      clearInterval(archiveBreakTimer); clearInterval(archiveWaveTimer); clearInterval(archiveSpawnTimer);
-      archiveBreakTimer=null; archiveWaveTimer=null; archiveSpawnTimer=null;
-      gameState.enemies.forEach(e=>e.element?.remove()); gameState.enemies=[];
-      archiveWaveEnemies.clear();
-      archiveMode=true; archiveSection=Math.max(0,Math.min(25,Number(section)||0)); archiveWave=1; archiveScreen.classList.remove('hidden'); archiveGameArea.querySelectorAll('.archive-face-paper,.enemy').forEach(el=>el.remove()); archiveGameArea.style.background=archiveSection>=1 ? 'linear-gradient(135deg,rgba(75,85,99,.5),rgba(31,41,55,.8)), repeating-linear-gradient(12deg,transparent 0 90px,rgba(255,255,255,.06) 91px 94px)' : 'rgba(75,85,99,.3)'; if(archiveSection>=1){ const paper=document.createElement('div'); paper.className='archive-face-paper absolute left-1/2 top-1/2 z-0 flex h-[70%] w-[52%] -translate-x-1/2 -translate-y-1/2 rotate-[-4deg] items-center justify-center rounded-sm bg-gray-200/80 text-[10rem] text-gray-700/40 shadow-2xl pointer-events-none'; paper.textContent='☻'; archiveGameArea.appendChild(paper); } startArchiveWave(); }
-    function finishArchiveSection(){ archiveMode=false; archiveContinue.classList.remove('hidden'); archiveContinue.classList.add('flex'); }
-    document.getElementById('archiveNoBtn')?.addEventListener('click',()=>{ archiveContinue.classList.add('hidden');archiveContinue.classList.remove('flex'); archiveMode=false; clearInterval(archiveBreakTimer); clearInterval(archiveWaveTimer); clearInterval(archiveSpawnTimer); archiveWaveEnemies.clear(); archiveGameArea.querySelectorAll('.enemy').forEach(el=>el.remove()); closeArchive(); startScreen.classList.remove('hidden'); });
-    document.getElementById('archiveYesBtn')?.addEventListener('click',()=>{ archiveContinue.classList.add('hidden');archiveContinue.classList.remove('flex'); if(archiveSection>=25){closeArchive();return;} const ok=document.createElement('div');ok.className='absolute inset-0 z-[130] flex items-center justify-center bg-black/70';ok.innerHTML='<div class="rounded-xl border-2 border-green-500 bg-[#063b22] p-6 text-center text-green-200"><p class="mb-4">다음 섹션으로 이동합니다.</p><div class="flex gap-3"><button id="approveArchive" class="rounded bg-green-600 px-4 py-2 font-bold">승인</button><button id="boostArchive" class="rounded bg-emerald-800 px-4 py-2 font-bold">강화 (50💰)</button></div></div>';archiveScreen.appendChild(ok);ok.querySelector('#approveArchive').onclick=()=>{ok.remove();archiveMode=true;archiveSection++;archiveWave=1;updateArchiveHud();startArchiveWave();};ok.querySelector('#boostArchive').onclick=()=>{if(gameState.money>=archiveSkipCost){gameState.money-=archiveSkipCost;archiveSkipCost=Math.floor(archiveSkipCost*1.3+10);ok.remove();archiveMode=true;archiveSection++;archiveWave=1;updateArchiveHud();startArchiveWave();}else{ok.querySelector('#boostArchive').textContent='💰 머니 부족';}}; });
-    function closeArchive(){ archiveMode=false; clearInterval(archiveBreakTimer); clearInterval(archiveWaveTimer); clearInterval(archiveSpawnTimer); archiveBreakTimer=null; archiveWaveTimer=null; archiveSpawnTimer=null; archiveWaveEnemies.clear(); archiveGameArea.querySelectorAll('.enemy,.archive-face-paper').forEach(el=>el.remove()); archiveScreen.classList.add('hidden'); upgradePanel.style.zIndex='60'; if(!gameOverScreen.classList.contains('hidden')||gameState.baseHealth<=0)return; gameState.isRunning=true;lastTime=performance.now();requestAnimationFrame(gameLoop); }
-    archiveGameArea.addEventListener('click',e=>{ if(e.target===archiveGameArea) finishArchiveWaveIfReady(); });
 
     // 이벤트 리스너
     gameArea.addEventListener('click', shoot);
@@ -1875,9 +1556,6 @@
       archiveMode = false;
       voidMode = false;
       bugFloor = false;
-      archiveScreen.classList.add('hidden');
-      archiveContinue.classList.add('hidden');
-      archiveContinue.classList.remove('flex');
       cheatPanel.classList.add('hidden');
       waveBreakScreen.classList.add('hidden');
       gameOverScreen.classList.add('hidden');
@@ -1901,7 +1579,6 @@
       startButton.disabled = false;
       startButton.textContent = '🚀 게임 시작';
     }
-    // 시작 버튼은 클릭·터치·키보드를 모두 같은 경로로 처리합니다.
     let startInputLocked = false;
     function startFromAnyInput(event) {
       if (event) {
@@ -1975,21 +1652,19 @@
     }
     function resetEnemyInfo() { enemyInfoPanel.innerHTML = '<div class="text-4xl text-center mb-2">?</div><div class="text-center text-gray-400 text-sm">적에게 커서를 올려 정보 보기</div>'; }
     function openCheat() {
-      const archiveVisible = !archiveScreen.classList.contains('hidden') || !archiveContinue.classList.contains('hidden');
-      if (!gameState.isRunning && !archiveMode && !archiveVisible) return;
-      if (!archiveMode) gameState.isRunning = false;
+      if (!gameState.isRunning) return;
+      gameState.isRunning = false;
       cheatPanel.classList.remove('hidden');
     }
-    function closeCheat() { cheatPanel.classList.add('hidden'); if (archiveMode || !gameOverScreen.classList.contains('hidden') || gameState.baseHealth <= 0) return; gameState.isRunning = true; lastTime = performance.now(); spawnTimer = 0; requestAnimationFrame(gameLoop); }
+    function closeCheat() { cheatPanel.classList.add('hidden'); if (!gameOverScreen.classList.contains('hidden') || gameState.baseHealth <= 0) return; gameState.isRunning = true; lastTime = performance.now(); spawnTimer = 0; requestAnimationFrame(gameLoop); }
     document.addEventListener('keydown', e => {
       const cheatKey = e.key.toLowerCase() === 'p' && !e.shiftKey;
       if (cheatKey) { e.preventDefault(); cheatPanel.classList.contains('hidden') ? openCheat() : closeCheat(); }
     });
     document.getElementById('closeCheatBtn').addEventListener('click', closeCheat);
-    document.getElementById('closeArchiveBtn')?.addEventListener('click', closeArchive);
     document.getElementById('mobileCheatBtn').addEventListener('click', openCheat);
     document.getElementById('mobileQuitBtn').addEventListener('click', showQuitPrompt);
-    document.getElementById('applyWaveCheat').addEventListener('click', () => { const rawWave = String(document.getElementById('cheatWave').value || '').trim(); if (rawWave.toLowerCase() === 'archive') { document.getElementById('removeEnemyHint').textContent = '기록실 콘텐츠는 삭제되었습니다.'; return; } if (rawWave.toLowerCase() === 'bug') { bugFloor = true; voidMode = false; archiveMode = false; document.getElementById('gameContainer').classList.remove('void-mode'); document.getElementById('voidTitle').classList.add('hidden'); base.style.display = ''; gameState.wave = 44; waveDisplay.textContent = 'BUG FLOOR'; gameState.enemies.forEach(e => e.element.remove()); gameState.enemies = []; enemiesThisWave = Infinity; enemiesSpawnedThisWave = 0; gameState.isRunning = true; closeCheat(); lastTime = performance.now(); requestAnimationFrame(gameLoop); return; } const requested = Number(rawWave); if (rawWave.toLowerCase() === 'void' || requested === -1) { bugFloor = false; archiveMode = false; clearInterval(archiveBreakTimer); clearInterval(archiveSpawnTimer); archiveMode = false; voidMode = true; gameState.wave = 1; gameState.isRunning = true; document.getElementById('gameContainer').classList.add('void-mode'); document.getElementById('voidTitle').classList.remove('hidden'); document.getElementById('voidWaveLabel').textContent = '1'; base.style.display = 'none'; gameArea.style.background = '#000'; gameState.enemies.forEach(e => e.element.remove()); gameState.enemies = []; enemiesThisWave = 28; enemiesSpawnedThisWave = 0; closeCheat(); lastTime = performance.now(); requestAnimationFrame(gameLoop); return; } const n = Math.max(1, requested || 1); bugFloor = false; archiveMode = false; voidMode = false; document.getElementById('gameContainer').classList.remove('void-mode'); document.getElementById('voidTitle').classList.add('hidden'); base.style.display = ''; gameState.wave = n; waveDisplay.textContent = n; gameState.enemies.forEach(e => e.element.remove()); gameState.enemies = []; startWave(); updateAchievementUI(); updateUI(); closeCheat(); });
+    document.getElementById('applyWaveCheat').addEventListener('click', () => { const rawWave = String(document.getElementById('cheatWave').value || '').trim(); if (rawWave.toLowerCase() === 'bug') { bugFloor = true; voidMode = false; document.getElementById('gameContainer').classList.remove('void-mode'); document.getElementById('voidTitle').classList.add('hidden'); base.style.display = ''; gameState.wave = 44; waveDisplay.textContent = 'BUG FLOOR'; gameState.enemies.forEach(e => e.element.remove()); gameState.enemies = []; enemiesThisWave = Infinity; enemiesSpawnedThisWave = 0; gameState.isRunning = true; closeCheat(); lastTime = performance.now(); requestAnimationFrame(gameLoop); return; } const requested = Number(rawWave); if (rawWave.toLowerCase() === 'void' || requested === -1) { bugFloor = false; voidMode = true; gameState.wave = 1; gameState.isRunning = true; document.getElementById('gameContainer').classList.add('void-mode'); document.getElementById('voidTitle').classList.remove('hidden'); document.getElementById('voidWaveLabel').textContent = '1'; base.style.display = 'none'; gameArea.style.background = '#000'; gameState.enemies.forEach(e => e.element.remove()); gameState.enemies = []; enemiesThisWave = 28; enemiesSpawnedThisWave = 0; closeCheat(); lastTime = performance.now(); requestAnimationFrame(gameLoop); return; } const n = Math.max(1, requested || 1); bugFloor = false; voidMode = false; document.getElementById('gameContainer').classList.remove('void-mode'); document.getElementById('voidTitle').classList.add('hidden'); base.style.display = ''; gameState.wave = n; waveDisplay.textContent = n; gameState.enemies.forEach(e => e.element.remove()); gameState.enemies = []; startWave(); updateAchievementUI(); updateUI(); closeCheat(); });
     document.getElementById('applyUpgradeCheat').addEventListener('click', () => { metaUpgrades.base = Math.max(0, Number(document.getElementById('cheatBase').value) || 0); metaUpgrades.damage = Math.max(0, Number(document.getElementById('cheatDamage').value) || 0); metaUpgrades.slow = Math.max(0, Math.min(2, Number(document.getElementById('cheatSlow').value) || 0)); metaUpgrades.thorn = Math.max(0, Math.min(4, Number(document.getElementById('cheatThorn').value) || 0)); turretOwned = document.getElementById('cheatTurret').checked; metaUpgrades.detector = document.getElementById('cheatDetector').checked; metaUpgrades.armorBreak = document.getElementById('cheatArmorBreak').checked; const previousMaxHealth = gameState.maxHealth; gameState.maxHealth = 100 + metaUpgrades.base * 10; gameState.baseHealth = Math.min(gameState.maxHealth, gameState.baseHealth + Math.max(0, gameState.maxHealth - previousMaxHealth)); updateHealthDisplay(); updateUI(); });
     document.getElementById('applyRifleCheat').addEventListener('click', () => { gameState.damage = Math.max(0.1, Number(document.getElementById('cheatGunDamage').value) || 1.5); const rate = Math.max(0.1, Number(document.getElementById('cheatGunRate').value) || 4); gameState.fireRate = 1000 / rate; updateUI(); });
     document.getElementById('infiniteMoneyCheat').addEventListener('click', () => { gameState.money = 999999999; updateUI(); });
@@ -2012,7 +1687,7 @@
           darkSplitter:'다크 스플리터 ⚫',
           cyborg:'사이보그 🤖',
           glitch:'글리치 🌀',
-          glitchPhantom:'글리치의 환영 👁️️'
+          glitchPhantom:'글리치의 환영 👁'
         } : {
           normal:'노멀 👹',
           slow:'슬로우 👺',
@@ -2029,7 +1704,7 @@
           leader:'리더 👑',
           bug:'버그 🐛',
           hide:'하이드 👤',
-          metal:'메탈 ⚙️',
+          metal:'메탈 ⚙️️',
           darkSplitter:'다크 스플리터 ⚫',
           cyborg:'사이보그 🤖',
           glitch:'글리치 🌀',
@@ -2053,8 +1728,7 @@
       if (!box.parentElement) document.getElementById('openSpawnCheat').after(box); 
       
       box.querySelectorAll('button').forEach(btn => btn.onclick = () => { 
-        if (archiveMode) archiveSpawn(btn.dataset.spawn); 
-        else spawnEnemy(btn.dataset.spawn); 
+        spawnEnemy(btn.dataset.spawn); 
         document.getElementById('removeEnemyHint').textContent = labelForSpawn(btn.dataset.spawn) + ' 적을 1마리 소환했습니다.'; 
       }); 
     });
