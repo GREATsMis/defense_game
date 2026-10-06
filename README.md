@@ -1,2 +1,2124 @@
-# defense_game
-defense game
+<!doctype html>
+<!-- 기본 설정-->
+<html lang="ko" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Defense Game</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      box-sizing: border-box;
+    }
+    
+    * {
+      user-select: none;
+    }
+    
+    @keyframes muzzleFlash {
+      0% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.5); }
+    }
+    
+    .muzzle-flash {
+      animation: muzzleFlash 0.1s ease-out forwards;
+    }
+    
+    @keyframes hit {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(2); }
+    }
+    
+    .hit-flash {
+      animation: hit 0.1s ease-out;
+    }
+    
+    @keyframes baseHit {
+      0%, 100% { box-shadow: inset 0 0 0 0 rgba(255,0,0,0); }
+      50% { box-shadow: inset 0 0 30px 10px rgba(255,0,0,0.5); }
+    }
+    
+    .base-hit {
+      animation: baseHit 0.3s ease-out;
+    }
+    
+    .enemy {
+      transition: left 0.05s linear;
+    }
+
+    .void-mode #gameArea { background: #000 !important; }
+    .void-mode #base, .void-mode #enemyInfoPanel, .void-mode #gameOver, .void-mode #waveBreakScreen, .void-mode #upgradePanel { display: none !important; }
+    .void-mode #gameArea { right: 0 !important; }
+    .void-mode #gameTitle { display: none; }
+    #archiveScreen, #archiveContinue { display: none !important; }
+    #startScreen, #startScreen button { pointer-events: auto !important; }
+    #startScreen button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    #startScreen {
+      isolation: isolate;
+      z-index: 9999 !important;
+      cursor: default;
+    }
+    #startScreen > div,
+    #startScreen button {
+      position: relative;
+      z-index: 10000;
+      pointer-events: auto !important;
+      touch-action: manipulation;
+    }
+
+    #startScreen {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+
+    #startScreen.hidden {
+      display: none !important;
+    }
+
+    #startBtn {
+      position: relative !important;
+      z-index: 10001 !important;
+      pointer-events: auto !important;
+      cursor: pointer !important;
+    }
+    
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .slide-in {
+      animation: slideIn 0.3s ease-out;
+    }
+    
+    .upgrade-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .mobile-game-actions {
+      display: none;
+    }
+
+    /* 세로형 모바일 화면 전용 배치 */
+    @media (max-width: 640px) and (orientation: portrait) {
+      body {
+        overflow: hidden;
+        font-size: 14px;
+      }
+
+      #gameContainer {
+        min-height: 100%;
+      }
+
+      #gameArea {
+        right: 0;
+        bottom: 58px;
+        height: calc(100% - 58px);
+        cursor: crosshair;
+      }
+
+      #base {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 58px;
+        border-left: 0;
+        border-top: 3px solid #d97706;
+        background: linear-gradient(90deg, #92400e, #b45309, #92400e);
+        flex-direction: row;
+        justify-content: center;
+      }
+
+      #base > div {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      #base .text-4xl {
+        font-size: 1.7rem;
+        margin: 0;
+      }
+
+      #turretVisual {
+        font-size: 1.25rem;
+      }
+
+      #base .text-xs {
+        font-size: 0.7rem;
+      }
+
+      #gunPosition {
+        right: 14px;
+        bottom: 76px;
+      }
+
+      #muzzleFlash {
+        right: 28px;
+        bottom: 82px;
+      }
+
+      .enemyInfoPanel,
+      #enemyInfoPanel {
+        top: auto;
+        left: 8px;
+        right: 8px;
+        bottom: 66px;
+        width: auto;
+        max-width: none;
+        padding: 8px 10px;
+        font-size: 11px;
+        border-radius: 10px;
+        opacity: 0.94;
+      }
+
+      #enemyInfoPanel > div:first-child {
+        font-size: 15px;
+        margin-bottom: 2px;
+      }
+
+      #enemyInfoPanel > div:nth-child(2) {
+        display: inline;
+      }
+
+      #gameContainer > .absolute.top-4.left-4.right-4 {
+        top: 8px;
+        left: 8px;
+        right: 8px;
+      }
+
+      #gameContainer > .absolute.top-4.left-4.right-4 > div {
+        width: 100%;
+        padding: 9px 11px;
+        border-radius: 10px;
+      }
+
+      #gameTitle {
+        font-size: 1.05rem;
+        margin-bottom: 4px;
+      }
+
+      #healthBar {
+        width: 100%;
+      }
+
+      #gameContainer > .absolute.top-4.left-4.right-4 .w-32 {
+        width: 92px;
+        height: 11px;
+      }
+
+      #gameContainer > .absolute.top-4.left-4.right-4 .text-lg {
+        font-size: 0.95rem;
+        margin-top: 3px;
+      }
+
+      #waveBreakScreen > div,
+      #gameOver > div,
+      #startScreen > div {
+        width: calc(100% - 24px);
+        max-width: none;
+        max-height: calc(100% - 24px);
+        overflow-y: auto;
+        padding: 20px 16px;
+        border-radius: 16px;
+      }
+
+      #startScreen h2,
+      #gameOver h2,
+      #waveBreakScreen h2 {
+        font-size: 1.65rem;
+      }
+
+      #startScreen .text-6xl,
+      #gameOver .text-6xl,
+      #waveBreakScreen .text-6xl {
+        font-size: 3rem;
+        margin-bottom: 8px;
+      }
+
+      #startScreen .grid-cols-3 {
+        gap: 5px;
+      }
+
+      .map-btn {
+        min-height: 46px;
+        padding: 6px 3px;
+        font-size: 0.8rem;
+      }
+
+      #upgradePanel {
+        top: 0;
+        right: 0;
+        width: 100%;
+        height: 100%;
+        padding: 48px 14px 20px;
+        border-left: 0;
+        border-top: 3px solid #9333ea;
+      }
+
+      #upgradePanel h2 {
+        font-size: 1.35rem;
+        margin-bottom: 14px;
+      }
+
+      #upgradePanel .space-y-3,
+      #upgradePanel .space-y-4 {
+        gap: 8px;
+      }
+
+      #upgradePanel .p-4 {
+        padding: 10px;
+      }
+
+      #upgradePanel button {
+        min-height: 42px;
+      }
+
+      #cheatPanel > div {
+        width: calc(100% - 20px);
+        max-height: calc(100% - 20px);
+        padding: 16px;
+        border-radius: 15px;
+      }
+
+      #cheatPanel input,
+      #cheatPanel select,
+      #cheatPanel button {
+        min-height: 40px;
+      }
+
+      #quitPrompt > div {
+        width: calc(100% - 28px);
+        padding: 22px 15px;
+      }
+
+      .enemy {
+        touch-action: manipulation;
+      }
+
+      .mobile-game-actions {
+        display: none;
+        position: absolute;
+        left: 10px;
+        bottom: 68px;
+        z-index: 35;
+        gap: 8px;
+        pointer-events: auto;
+      }
+
+      .mobile-game-action {
+        min-height: 40px;
+        padding: 8px 12px;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 10px;
+        color: white;
+        font-size: 12px;
+        font-weight: 800;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+        touch-action: manipulation;
+      }
+
+      .mobile-game-action:active {
+        transform: scale(0.96);
+      }
+
+      #mobileCheatBtn {
+        background: linear-gradient(135deg, #a21caf, #7e22ce);
+      }
+
+      #mobileQuitBtn {
+        background: linear-gradient(135deg, #dc2626, #991b1b);
+      }
+    }
+
+    @media (max-width: 640px) and (orientation: landscape) {
+      #gameArea { right: 72px; }
+      #base { width: 72px; }
+      #gunPosition { right: 82px; }
+      #muzzleFlash { right: 96px; }
+    }
+  </style>
+  <!--화면 구성-->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js" type="text/javascript"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17" type="text/javascript"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.577.0/dist/umd/lucide.min.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full m-0 p-0 overflow-hidden" style="background: #1a472a;">
+  <div id="gameContainer" class="relative w-full h-full">
+   <div id="voidTitle" class="absolute top-4 left-1/2 -translate-x-1/2 z-40 hidden text-2xl md:text-4xl font-black tracking-[0.25em] text-white">
+    VOID의 침공 <span id="voidWaveLabel">1</span>
+   </div>
+   <!-- 게임 화면 -->
+   <div class="absolute top-4 left-4 right-4 flex justify-between items-start z-20 pointer-events-none">
+    <div class="bg-black/60 rounded-xl p-4 backdrop-blur-sm">
+     <h1 id="gameTitle" class="text-2xl font-bold text-white mb-2" style="font-family: 'Orbitron', sans-serif;">🎯 디펜스 게임</h1>
+     <div class="flex items-center gap-2 mb-1"><span class="text-gray-300 text-sm">🏠 기지 체력:</span>
+      <div class="w-32 h-4 bg-gray-700 rounded-full overflow-hidden">
+       <div id="healthBar" class="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-300" style="width: 100%"></div>
+      </div><span id="healthText" class="text-white font-bold text-sm">100</span>
+     </div>
+     <div class="text-yellow-400 font-bold">
+      💀 처치: <span id="kills">0</span>
+     </div>
+     <div class="text-cyan-400 font-bold">
+      🌊 웨이브: <span id="wave">1</span>
+     </div>
+     <div class="text-green-400 font-bold text-lg mt-2">
+      💰 <span id="money">0</span>
+     </div>
+    </div>
+   </div>
+   <!-- 기지 -->
+   <div id="base" class="absolute right-0 top-0 w-24 h-full bg-gradient-to-l from-amber-800 to-amber-900 border-l-4 border-amber-600 flex items-center justify-center z-10">
+    <div class="text-center">
+     <div class="text-4xl mb-2">
+      🏰
+     </div>
+     <div id="turretVisual" class="text-2xl opacity-0">
+      🔫
+     </div>
+     <div class="text-white text-xs font-bold">
+      기지
+     </div>
+    </div>
+   </div><!-- 게임 영역 -->
+   <div id="gameArea" class="absolute left-0 top-0 right-24 h-full cursor-crosshair"><!-- 적들이 여기 스폰됨 -->
+   </div><!-- 플레이어 총구 -->
+   <div id="gunPosition" class="absolute bottom-8 right-28 z-30 pointer-events-none">
+    <div class="text-4xl transform -scale-x-100">
+     🔫
+    </div>
+   </div><!-- 머즐 플래시 -->
+   <div id="muzzleFlash" class="absolute bottom-12 right-36 w-6 h-6 bg-yellow-400 rounded-full opacity-0 z-30 pointer-events-none"></div>
+   <div class="mobile-game-actions" aria-label="모바일 게임 메뉴">
+    <button id="mobileCheatBtn" class="mobile-game-action" type="button">🛠️ 치트</button> <button id="mobileQuitBtn" class="mobile-game-action" type="button">🚪 포기</button>
+   </div><!-- 웨이브 휴식 화면 -->
+   <div id="waveBreakScreen" class="absolute inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 rounded-2xl p-8 text-center border-2 border-green-600">
+     <div class="text-6xl mb-4">
+      ☕
+     </div>
+     <h2 class="text-4xl font-bold text-green-400 mb-4">웨이브 <span id="nextWaveNum">2</span> 준비</h2>
+     <div class="mb-6">
+      <div class="text-white text-lg mb-3">
+       다음 시작까지: <span id="breakTimer" class="text-cyan-400 font-bold text-2xl">5</span>초
+      </div>
+      <div class="w-48 h-2 bg-gray-700 rounded-full overflow-hidden mx-auto">
+       <div id="breakProgress" class="h-full bg-gradient-to-r from-green-600 to-green-400 transition-all duration-1000" style="width: 100%"></div>
+      </div>
+     </div>
+     <div class="space-y-2 mb-6"><button id="upgradeSkipBtn" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold py-2 px-6 rounded-lg transition-all pointer-events-auto"> ⚡ 바로 시작 </button> <button id="breakShopBtn" class="w-full bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white font-bold py-2 px-6 rounded-lg transition-all pointer-events-auto"> 🏪 업그레이드 </button>
+     </div>
+    </div>
+   </div>
+   <!-- 업그레이드 패널 -->
+   <div id="upgradePanel" class="absolute right-0 top-0 w-80 h-full bg-gray-900/95 backdrop-blur-sm border-l-2 border-purple-600 p-6 overflow-y-auto z-[60] transform translate-x-full transition-transform pointer-events-auto"><button id="closePanelBtn" class="absolute top-4 right-4 text-2xl hover:scale-110 transition-transform">❌</button>
+    <h2 class="text-2xl font-bold text-purple-400 mb-6 mt-2">🏪 업그레이드 상점</h2>
+    <div class="bg-gray-800 rounded-lg p-4 mb-5 border border-purple-500">
+     <div class="text-green-300 font-bold text-lg">
+      💰 업그레이드 머니
+     </div>
+     <div id="panelTokens" class="text-3xl font-bold text-yellow-300">
+      0
+     </div>
+    </div>
+    <div class="space-y-3 mb-6">
+     <h3 class="text-xl font-bold text-purple-300">🛡️ 기지 업그레이드</h3>
+     <div class="bg-gray-800 rounded-lg p-4 border border-amber-600 space-y-2 text-sm">
+      <div class="text-white font-bold">
+       🔫 기관총 터렛
+      </div>
+      <div class="text-xs text-gray-300">
+       고정 능력: 2 피해 · 초당 2발
+      </div>
+      <div id="turretInfo" class="text-amber-300">
+       11웨이브부터 설치 가능
+      </div>
+      <div>
+       상태: <span id="turretStatus" class="text-gray-300 font-bold">🔒 잠김</span> · 비용: <span class="text-yellow-300 font-bold">1000💰</span>
+      </div><button id="turretUpgradeBtn" class="upgrade-btn w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-lg">🔒 11웨이브부터 구매</button>
+     </div>
+     <div class="bg-gray-800 text-gray-100 rounded-lg p-4 border border-purple-600 space-y-2 text-sm">
+      <div>
+       기지 체력: <span id="baseUpgradeInfo" class="text-cyan-300 font-bold">100</span>
+      </div>
+      <div>
+       레벨: <span id="baseUpgradeLevel" class="text-cyan-300 font-bold">0</span> · 비용: <span id="baseUpgradeCost" class="text-yellow-300 font-bold">10💰</span>
+      </div><button id="baseUpgradeBtn" class="upgrade-btn w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg">⬆️ 기지 체력 +10</button>
+     </div>
+    </div>
+    <div class="space-y-3 mb-6">
+     <h3 class="text-xl font-bold text-cyan-300">🔎 특수 업그레이드</h3>
+     <div class="bg-gray-800 rounded-lg p-4 border border-cyan-600 space-y-2 text-sm">
+      <div class="text-white font-bold">
+       탐지기
+      </div>
+      <div class="text-gray-300">
+       하이드 공격 가능 · 1000💰 · 25웨이브부터
+      </div><button id="detectorBtn" class="upgrade-btn w-full bg-cyan-700 hover:bg-cyan-600 text-white font-bold py-2 rounded-lg">🔒 25웨이브부터 구매</button>
+     </div>
+     <div class="bg-gray-800 rounded-lg p-4 border border-red-600 space-y-2 text-sm">
+      <div class="text-white font-bold">
+       방어 파쇄
+      </div>
+      <div class="text-gray-300">
+       절대 방어 무효화 · 3000💰 · 40웨이브부터
+      </div><button id="armorBreakBtn" class="upgrade-btn w-full bg-red-700 hover:bg-red-600 text-white font-bold py-2 rounded-lg">🔒 40웨이브부터 구매</button>
+     </div>
+    </div>
+    <div class="space-y-3 mb-6">
+     <h3 class="text-xl font-bold text-rose-300">⚔️ 전투 업그레이드</h3>
+     <div class="bg-gray-800 rounded-lg p-4 border border-rose-600 space-y-2 text-sm">
+      <div>
+       공격력 보너스: <span id="damageUpgradeInfo" class="text-cyan-300 font-bold">×1.0</span>
+      </div>
+      <div>
+       레벨: <span id="damageUpgradeLevel" class="text-cyan-300 font-bold">0</span> · 비용: <span id="damageUpgradeCost" class="text-yellow-300 font-bold">20💰</span>
+      </div><button id="damageUpgradeBtn" class="upgrade-btn w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 rounded-lg">⬆️ 공격력 강화</button>
+     </div>
+     <div class="bg-gray-800 rounded-lg p-4 border border-blue-600 space-y-2 text-sm">
+      <div>
+       적 속도 감소: <span id="slowUpgradeInfo" class="text-cyan-300 font-bold">0%</span>
+      </div>
+      <div>
+       레벨: <span id="slowUpgradeLevel" class="text-cyan-300 font-bold">0</span>/2 · 비용: <span id="slowUpgradeCost" class="text-yellow-300 font-bold">100💰</span>
+      </div><button id="slowUpgradeBtn" class="upgrade-btn w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg">⬆️ 감속 강화</button>
+     </div>
+     <div class="bg-gray-800 rounded-lg p-4 border border-orange-600 space-y-2 text-sm">
+      <div>
+       가시 반사 피해: <span id="thornUpgradeInfo" class="text-cyan-300 font-bold">0%</span>
+      </div>
+      <div>
+       레벨: <span id="thornUpgradeLevel" class="text-cyan-300 font-bold">0</span>/4 · 비용: <span id="thornUpgradeCost" class="text-yellow-300 font-bold">200💰</span>
+      </div><button id="thornUpgradeBtn" class="upgrade-btn w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 rounded-lg">⬆️ 가시 강화</button>
+     </div>
+    </div>
+    <div class="space-y-3 mb-6">
+     <h3 class="text-xl font-bold text-yellow-300">🔫 무기 상점</h3>
+     <div class="grid grid-cols-1 gap-2"><button id="rifleBtn" class="weapon-btn bg-orange-700 ring-2 ring-orange-300 text-white font-bold py-2 rounded-lg">🪖 소총<br><span class="text-xs font-normal">고정 무기 · 1.5 피해 · 초당 4발</span></button>
+     </div>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-4 mb-6 border border-green-600">
+     <div class="text-green-400 font-bold text-lg">
+      💰 보유금액
+     </div>
+     <div id="panelMoney" class="text-3xl font-bold text-yellow-400">
+      0
+     </div>
+    </div>
+    <div class="space-y-4">
+     <h3 id="weaponUpgradeTitle" class="text-xl font-bold text-orange-400">🔫 권총 업그레이드</h3>
+     <div class="bg-gray-800 rounded-lg p-4 border border-orange-600 space-y-3">
+      <div class="flex justify-between"><span class="text-white">레벨:</span> <span id="panelLevel" class="text-cyan-400 font-bold">1</span>
+      </div>
+      <div class="flex justify-between"><span class="text-white">공격력:</span> <span id="panelDamage" class="text-cyan-400 font-bold">1.5</span>
+      </div>
+      <div class="flex justify-between"><span class="text-white">공격속도:</span> <span id="panelFireRate" class="text-cyan-400 font-bold">2.0</span>발/초
+      </div>
+      <div class="border-t border-gray-600 pt-3">
+       <div id="upgradeCostDiv" class="flex justify-between mb-3"><span class="text-white font-bold">업그레이드 비용:</span> <span id="nextUpgradeCost" class="text-yellow-400 font-bold">25💰</span>
+       </div><button id="upgradeBtn" class="upgrade-btn w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-bold py-2 px-4 rounded-lg transition-all"> ⬆️ 업그레이드 </button>
+      </div>
+      <div class="text-xs text-gray-400 mt-2">
+       <p>• 소총 피해 +0.3</p>
+       <p>• 공격속도 × 0.99</p>
+       <p>• 웨이브마다 적 체력 ×1.02</p>
+       <p>• 최대 레벨: 100</p>
+      </div>
+     </div>
+    </div>
+   </div>
+   <!-- 적 정보 패널 -->
+   <aside id="enemyInfoPanel" class="absolute top-4 right-4 w-64 bg-black/90 rounded-xl p-4 text-white backdrop-blur-sm z-[75] pointer-events-none">
+    <div class="text-4xl text-center mb-2">
+     ?
+    </div>
+    <div class="text-center text-gray-400 text-sm">
+     적에게 커서를 올려 정보 보기
+    </div>
+   </aside>
+   <!-- 치트 창 -->
+   <div id="cheatPanel" class="absolute inset-0 bg-black/80 flex items-center justify-center z-[90] hidden">
+    <div class="bg-gray-900 border-2 border-fuchsia-500 rounded-2xl p-6 w-[min(92%,42rem)] max-h-[92%] overflow-y-auto text-white">
+     <div class="flex justify-between items-center mb-4">
+      <h2 class="text-2xl font-bold text-fuchsia-300">🛠️ 치트</h2><button id="closeCheatBtn" class="text-xl">✕</button>
+     </div><label for="cheatWave" class="block text-sm text-gray-300 mb-1">웨이브 이동</label>
+     <div class="flex gap-2 mb-4"><input id="cheatWave" type="text" value="1" inputmode="text" class="w-full rounded-lg bg-gray-800 border border-gray-600 px-3 py-2 text-white"><button id="applyWaveCheat" class="bg-fuchsia-600 px-3 rounded-lg font-bold">이동</button>
+     </div>
+     <div class="grid grid-cols-2 gap-2 mb-3"><label class="text-xs text-gray-300">기지 레벨<input id="cheatBase" type="number" min="0" value="0" class="w-full mt-1 rounded bg-gray-800 border border-gray-600 px-2 py-1 text-white"></label> <label class="text-xs text-gray-300">공격 레벨<input id="cheatDamage" type="number" min="0" value="0" class="w-full mt-1 rounded bg-gray-800 border border-gray-600 px-2 py-1 text-white"></label> <label class="text-xs text-gray-300">감속 레벨<input id="cheatSlow" type="number" min="0" max="2" value="0" class="w-full mt-1 rounded bg-gray-800 border border-gray-600 px-2 py-1 text-white"></label> <label class="text-xs text-gray-300">가시 레벨<input id="cheatThorn" type="number" min="0" max="4" value="0" class="w-full mt-1 rounded bg-gray-800 border border-gray-600 px-2 py-1 text-white"></label>
+     </div><button id="applyUpgradeCheat" class="w-full bg-amber-600 py-2 rounded-lg font-bold mb-3">⬆️ 업그레이드 적용</button>
+     <div class="grid grid-cols-3 gap-2 mb-3 text-xs text-gray-200"><label class="bg-gray-800 rounded p-2"><input id="cheatTurret" type="checkbox" class="mr-1">터렛</label><label class="bg-gray-800 rounded p-2"><input id="cheatDetector" type="checkbox" class="mr-1">탐지기</label><label class="bg-gray-800 rounded p-2"><input id="cheatArmorBreak" type="checkbox" class="mr-1">방어 파쇄</label>
+     </div>
+     <div class="grid grid-cols-2 gap-2 mb-3"><label class="text-xs text-gray-300">공격력<input id="cheatGunDamage" type="number" min="0.1" step="0.1" value="1.5" class="w-full mt-1 rounded bg-gray-800 border border-gray-600 px-2 py-1 text-white"></label> <label class="text-xs text-gray-300">공격 속도<input id="cheatGunRate" type="number" min="0.1" step="0.1" value="4" class="w-full mt-1 rounded bg-gray-800 border border-gray-600 px-2 py-1 text-white"></label>
+     </div><button id="applyRifleCheat" class="w-full bg-orange-600 py-2 rounded-lg font-bold">🔫 무기 설정 적용</button>
+     <div class="grid grid-cols-2 gap-2 mt-3"><button id="endWaveCheat" class="bg-cyan-700 py-2 rounded-lg font-bold">🌊 웨이브 강제 종료</button> <button id="openSpawnCheat" class="bg-emerald-700 py-2 rounded-lg font-bold">👾 적 강제 스폰</button>
+     </div>
+     <div id="spawnSettings" class="mt-3 rounded-lg border border-emerald-700 bg-gray-800 p-3 hidden">
+      <div class="font-bold text-emerald-300 mb-2">
+       ⚙️ 스폰 설정
+      </div>
+      <div class="grid grid-cols-3 gap-2">
+       <label class="text-xs text-gray-300">효과<select id="spawnEffect" class="w-full mt-1 rounded bg-gray-700 border border-gray-600 px-1 py-1 text-white"><option value="">없음</option><option value="tough">단단함</option><option value="bulletproof">방탄</option><option value="absolute">절대 방어</option><option value="haste">재빠름</option></select></label> <label class="text-xs text-gray-300">회피율 %<input id="spawnDodge" type="number" min="0" max="100" value="0" class="w-full mt-1 rounded bg-gray-700 border border-gray-600 px-1 py-1 text-white"></label> <label class="text-xs text-gray-300">방어율 %<input id="spawnArmor" type="number" min="0" max="95" value="0" class="w-full mt-1 rounded bg-gray-700 border border-gray-600 px-1 py-1 text-white"></label>
+      </div>
+      <p class="text-xs text-gray-400 mt-2">설정은 다음에 소환하는 적부터 적용됩니다.</p>
+     </div>
+     <div class="mt-3 rounded-lg border border-red-700 bg-gray-800 p-3">
+      <div class="font-bold text-red-300 mb-2">
+       🧹 적 제거 치트
+      </div>
+      <div class="grid grid-cols-2 gap-2"><button id="removeAllEnemiesCheat" class="bg-red-700 hover:bg-red-600 py-2 rounded-lg font-bold">💥 전체 제거</button> <button id="toggleRemoveEnemyCheat" class="bg-rose-800 hover:bg-rose-700 py-2 rounded-lg font-bold">🎯 클릭 제거: 꺼짐</button>
+      </div>
+      <p id="removeEnemyHint" class="text-xs text-gray-400 mt-2">전체 제거 또는 클릭 제거 모드를 사용할 수 있습니다.</p>
+     </div>
+     <div class="mt-3 rounded-lg border border-green-700 bg-gray-800 p-3">
+      <div class="font-bold text-green-300 mb-2">
+       💰 돈 설정
+      </div><button id="infiniteMoneyCheat" class="w-full bg-green-700 py-2 rounded-lg font-bold mb-2">∞ 무한대 돈</button>
+      <div class="flex gap-2">
+       <input id="moneyCheatN" type="number" step="1" class="min-w-0 flex-1 rounded bg-gray-700 border border-gray-600 px-2 py-1 text-white" placeholder="n"><select id="moneyCheatOp" class="rounded bg-gray-700 border border-gray-600 px-2 py-1 text-white"><option value="+">+</option><option value="-">-</option><option value="*">×</option><option value="/">÷</option></select><button id="applyMoneyCheat" class="bg-green-600 px-3 rounded font-bold">적용</button>
+      </div>
+     </div>
+     <div class="mt-3 rounded-lg border border-red-700 bg-gray-800 p-3">
+      <div class="font-bold text-red-300 mb-2">
+       🧩 수정자 치트
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-xs"><label class="rounded bg-gray-700 p-2"><input class="cheat-modifier mr-1" data-mod="many" type="checkbox">많은 적</label> <label class="rounded bg-gray-700 p-2"><input class="cheat-modifier mr-1" data-mod="more" type="checkbox">더 많은 적</label> <label class="rounded bg-gray-700 p-2"><input class="cheat-modifier mr-1" data-mod="over" type="checkbox">과도한 적</label> <label class="rounded bg-gray-700 p-2"><input class="cheat-modifier mr-1" data-mod="glass" type="checkbox">유리 대포</label> <label class="rounded bg-gray-700 p-2"><input class="cheat-modifier mr-1" data-mod="jam" type="checkbox">총기 고장</label>
+      </div><button id="applyCheatModifiers" class="mt-2 w-full rounded bg-red-600 py-2 font-bold">수정자 적용</button>
+     </div>
+     <div class="mt-3 rounded-lg border border-amber-700 bg-gray-800 p-3">
+      <div class="font-bold text-amber-300 mb-2">
+       🏆 도전과제 치트
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-xs"><button id="unlockAllAchievements" class="rounded bg-amber-700 py-2 font-bold">전체 달성</button> <button id="clearAllAchievements" class="rounded bg-gray-700 py-2 font-bold">전체 해제</button>
+      </div>
+      <p class="text-xs text-gray-400 mt-2">개별 도전과제는 아래 상태를 눌러 전환할 수 있습니다.</p>
+      <div id="achievementCheatList" class="mt-2 space-y-1"></div>
+     </div>
+     <p class="text-xs text-gray-400 mt-4">P키로 치트 창을 열거나 닫을 수 있습니다.</p>
+    </div>
+   </div><!-- 기록실 화면 -->
+   <div id="archiveScreen" class="absolute inset-0 hidden z-[100] overflow-hidden" style="background:#777b78;">
+    <div class="relative z-10 flex h-full flex-col p-5 md:p-8 text-white">
+     <div class="flex items-center justify-between rounded-xl border-2 border-gray-400 bg-gray-800/90 p-4">
+      <div>
+       <p class="text-xs uppercase tracking-[0.3em] text-emerald-300">THE ARCHIVES</p>
+       <h2 class="text-3xl font-black">기록실 <span id="archiveSectionLabel">A</span> 섹션</h2>
+      </div><span class="rounded-lg bg-gray-700 px-3 py-2 text-sm font-bold text-gray-300">섹션 완료 후 종료 가능</span>
+     </div>
+     <div class="mt-4 flex flex-wrap gap-4 rounded-xl bg-gray-900/85 p-3">
+      섹션 <b id="archiveSectionHud" class="text-emerald-300">A</b> · 웨이브 <b id="archiveWaveHud" class="text-cyan-300">1</b>/10 · 기지 체력 <b id="archiveHealthHud" class="text-red-300">100 / 100</b> · 머니 <b id="archiveMoneyHud" class="text-yellow-300">0</b> · 공격속도 <b id="archiveRateHud" class="text-orange-300">4.0발/초</b>
+     </div>
+     <div id="archiveGameArea" class="relative mt-4 flex-1 overflow-hidden rounded-xl border-2 border-gray-500 bg-gray-600/30"></div>
+    </div>
+   </div>
+   <div id="archiveContinue" class="absolute inset-0 z-[120] hidden items-center justify-center bg-black/75">
+    <div class="w-[min(90%,34rem)] rounded-xl border-2 border-green-500 bg-[#063b22] p-7 text-center text-green-200 shadow-2xl">
+     <div class="mb-5 text-2xl font-bold">
+      계속하시겠습니까?
+     </div>
+     <div class="flex justify-center gap-3">
+      <button id="archiveNoBtn" class="rounded-lg bg-gray-700 px-6 py-3 font-bold text-white">아니오</button><button id="archiveYesBtn" class="rounded-lg bg-green-600 px-6 py-3 font-bold text-white">예</button>
+     </div>
+    </div>
+   </div>
+   <!-- 게임 오버 화면 -->
+   <div id="gameOver" class="absolute inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 rounded-2xl p-8 text-center border-2 border-red-600">
+     <div class="text-6xl mb-4">
+      💀
+     </div>
+     <h2 class="text-4xl font-bold text-red-500 mb-4">게임 오버</h2>
+     <p class="text-white text-xl mb-2">처치한 적: <span id="finalKills" class="text-yellow-400 font-bold">0</span></p>
+     <p class="text-white text-xl mb-2">도달한 웨이브: <span id="finalWave" class="text-cyan-400 font-bold">1</span></p>
+     <p class="text-white text-xl mb-6">총 수익: <span id="finalMoney" class="text-green-400 font-bold">0</span>💰</p><button id="restartBtn" class="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold py-3 px-8 rounded-xl text-xl transition-all transform hover:scale-105 pointer-events-auto"> 🔄 다시 시작 </button>
+    </div>
+   </div>
+   <!-- 시작 화면 -->
+   <div id="startScreen" class="absolute inset-0 bg-black/80 flex items-center justify-center z-50 pointer-events-auto">
+    <div class="bg-gray-900 rounded-2xl p-8 text-center border-2 border-green-600 max-w-md">
+     <div class="text-6xl mb-4">
+      🎯
+     </div>
+     <h2 id="startTitle" class="text-4xl font-bold text-green-400 mb-4">디펜스 게임</h2>
+     <div class="text-left text-gray-300 mb-6 space-y-2">
+      <p class="text-lg font-bold text-white">🎮 게임 안내</p>
+      <p>화면을 클릭하여 적을 사격하세요.</p>
+      <p>웨이브를 완료하고 업그레이드로 능력을 강화하세요.</p>
+     </div>
+     <div class="mb-5">
+      <p class="text-lg font-bold text-white mb-2">🗺️ 맵 선택</p>
+      <div class="grid grid-cols-3 gap-2"><button class="map-btn bg-green-700 border-2 border-green-300 text-white rounded-lg p-2 font-bold" data-map="forest">🌲 숲</button> <button class="map-btn bg-stone-700 border-2 border-transparent text-white rounded-lg p-2 font-bold" data-map="cave">🪨 동굴</button> <button class="map-btn bg-blue-700 border-2 border-transparent text-white rounded-lg p-2 font-bold" data-map="beach">🌊 바닷가</button>
+      </div>
+     </div>
+     <div class="flex flex-col gap-3 justify-center"><button id="achievementBtn" class="w-full bg-amber-700 hover:bg-amber-600 text-white font-bold py-3 px-5 rounded-xl transition-all pointer-events-auto">🏆 도전과제</button><button id="modifierBtn" class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-5 rounded-xl transition-all pointer-events-auto">🧩 수정자 <span id="modifierLock">🔒</span></button><button id="startBtn" class="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold py-3 px-8 rounded-xl text-xl transition-all transform hover:scale-105 pointer-events-auto"> 🚀 게임 시작 </button>
+     </div>
+    </div>
+   </div>
+   <div id="achievementPanel" class="absolute inset-0 bg-black/80 hidden items-center justify-center z-[95]">
+    <div class="bg-gray-900 border-2 border-amber-600 rounded-2xl p-6 w-[min(92%,32rem)] text-white"><button id="closeAchievementBtn" class="float-right text-xl">✕</button>
+     <h2 class="text-2xl font-bold text-amber-300 mb-2">🏆 도전과제</h2>
+     <p class="text-sm text-gray-400 mb-4">목표를 달성하면 영구적인 강화와 수정자가 해금됩니다.</p>
+     <div id="achievementList" class="space-y-2 text-sm">
+      <div class="achievement-row rounded bg-gray-800 p-3" data-achievement="kills100">
+       처치 <span class="float-right text-cyan-300">적 100명 · 공격력 +0.2</span>
+      </div>
+      <div class="achievement-row rounded bg-gray-800 p-3" data-achievement="kills1500">
+       처치 숙련 <span class="float-right text-cyan-300">적 1,500명 · 공격력 +0.4</span>
+      </div>
+      <div class="achievement-row rounded bg-gray-800 p-3" data-achievement="kills20000">
+       처치 전문가 <span class="float-right text-cyan-300">적 20,000명 · 공격력 +0.5</span>
+      </div>
+      <div class="achievement-row rounded bg-gray-800 p-3" data-achievement="wave300">
+       처치 기계 <span class="float-right text-cyan-300">한 웨이브 300명 · 공격력 +0.9</span>
+      </div>
+      <div class="achievement-row rounded bg-gray-800 p-3" data-achievement="glass50">
+       유리 대포 <span class="float-right text-cyan-300">체력 강화 없이 웨이브 50</span>
+      </div>
+      <div class="achievement-row rounded bg-gray-800 p-3" data-achievement="ammoSaver">
+       총알 아낌 <span class="float-right text-cyan-300">탄약 절약 · 공격속도 +0.2</span>
+      </div>
+     </div>
+     <p id="achievementProgress" class="mt-4 rounded-lg bg-amber-950/50 p-3 text-center text-amber-200">최고 웨이브: 1 · 수정자 잠금</p>
+    </div>
+   </div>
+   <div id="modifierPanel" class="absolute inset-0 bg-black/80 hidden items-center justify-center z-[95]">
+    <div class="bg-gray-900 border-2 border-red-600 rounded-2xl p-6 w-[min(92%,28rem)] text-white"><button id="closeModifierBtn" class="float-right text-xl">✕</button>
+     <h2 class="text-2xl font-bold text-red-400 mb-2">🧩 수정자</h2>
+     <p class="text-xs text-gray-400 mb-4">수정자는 오직 재미를 위한 것이며, 메인 콘텐츠가 아닙니다.</p>
+     <div class="space-y-2"><label class="block rounded bg-gray-800 p-2"><input class="modifier-check mr-2" data-mod="many" type="checkbox">많은 적 · 1.5배</label><label class="block rounded bg-gray-800 p-2"><input class="modifier-check mr-2" data-mod="more" type="checkbox">더 많은 적 · 3배</label><label class="block rounded bg-gray-800 p-2"><input class="modifier-check mr-2" data-mod="over" type="checkbox">과도한 적 · 10배</label><label class="block rounded bg-gray-800 p-2"><input class="modifier-check mr-2" data-mod="glass" type="checkbox">유리 대포 · 한 번 피격 시 사망</label><label class="block rounded bg-gray-800 p-2"><input class="modifier-check mr-2" data-mod="jam" type="checkbox">총기 고장 · 50% 발사 실패</label>
+     </div><button id="applyModifierBtn" class="mt-5 w-full rounded-lg bg-red-600 py-2 font-bold">적용</button>
+    </div>
+   </div>
+  </div>
+  <script>
+    // Config
+    const defaultConfig = {
+      game_title: '디펜스 게임'
+    };
+    
+    let config = { ...defaultConfig };
+    
+    // 게임 상태
+    let totalTokens = 0; // 기존 저장값 호환용, 이제 업그레이드는 머니를 사용합니다.
+    let selectedMap = 'forest';
+    const activeModifiers = new Set();
+    let bestWaveReached = 1;
+    let modifiersUnlocked = false;
+    const achievementState = { kills100:false, kills1500:false, kills20000:false, wave300:false, glass50:false, ammoSaver:false };
+    let voidMode = false;
+    let metaUpgrades = { base: 0, damage: 0, slow: 0, thorn: 0, detector: false, armorBreak: false };
+    let weapon = 'rifle';
+    let turretOwned = false;
+    let turretLastShot = 0;
+    const weaponStats = { rifle: { name: '소총', damage: 1, rate: 4, pellets: 1 } };
+    let gameState = {
+      baseHealth: 100 + metaUpgrades.base * 10,
+      maxHealth: 100 + metaUpgrades.base * 10,
+      money: 0,
+      kills: 0,
+      wave: 1,
+      enemies: [],
+      isRunning: false,
+      lastShot: 0,
+      fireRate: 500,
+      damage: 1.5,
+      gunLevel: 1,
+      weapon: 'rifle',
+      nextUpgradeCost: 25
+    };
+    
+    // 적 드롭 금액
+    const moneyDrops = {
+      normal: 1,
+      slow: 5,
+      fast: 3,
+      shield: 5,
+      heavy: 30,
+      splitterA: 1,
+      splitterB: 5,
+      splitterC: 50
+    };
+    
+    // DOM 요소
+    const gameArea = document.getElementById('gameArea');
+    const healthBar = document.getElementById('healthBar');
+    const healthText = document.getElementById('healthText');
+    const killsDisplay = document.getElementById('kills');
+    const waveDisplay = document.getElementById('wave');
+    const moneyDisplay = document.getElementById('money');
+    const gameOverScreen = document.getElementById('gameOver');
+    const startScreen = document.getElementById('startScreen');
+    const waveBreakScreen = document.getElementById('waveBreakScreen');
+    const upgradePanel = document.getElementById('upgradePanel');
+    const muzzleFlash = document.getElementById('muzzleFlash');
+    const base = document.getElementById('base');
+    
+    // 적 타입 정의
+    const enemyTypes = {
+      normal: {
+        health: 2.5,
+        speed: 0.9,
+        damage: 0.8,
+        color: 'from-green-600 to-green-500',
+        emoji: '👹',
+        size: 50
+      },
+      slow: {
+        health: 7.5,
+        speed: 0.5,
+        damage: 1.5,
+        color: 'from-blue-600 to-blue-500',
+        emoji: '👺',
+        size: 60
+      },
+      fast: {
+        health: 2,
+        speed: 1.8,
+        damage: 0.8,
+        color: 'from-red-600 to-red-500',
+        emoji: '😈',
+        size: 40
+      },
+      shield: {
+        health: 5,
+        speed: 0.75,
+        damage: 5,
+        color: 'from-cyan-600 to-blue-500',
+        emoji: '🛡️',
+        size: 58,
+        shield: 3,
+        shieldRegen: true
+      },
+      heavy: {
+        health: 20,
+        speed: 0.45,
+        damage: 25,
+        armor: 0.1,
+        color: 'from-slate-700 to-gray-500',
+        emoji: '🗿',
+        size: 72
+      },
+      splitterA: {
+        health: 3,
+        speed: 2,
+        damage: 5,
+        color: 'from-lime-600 to-green-500',
+        emoji: '🟢',
+        size: 42
+      },
+      splitterB: {
+        health: 6.5,
+        speed: 1.25,
+        damage: 15,
+        color: 'from-yellow-600 to-orange-500',
+        emoji: '🟠',
+        size: 52,
+        splitsInto: 'splitterA',
+        splitCount: 3
+      },
+      splitterC: {
+        health: 25,
+        speed: 0.5,
+        damage: 50,
+        color: 'from-fuchsia-700 to-purple-500',
+        emoji: '🟣',
+        size: 82,
+        splitsInto: 'splitterB',
+        splitCount: 4
+      },
+      haste: { 
+        health: 12,
+        speed: 4,
+        damage: 20,
+        color: 'from-yellow-500 to-amber-400', 
+        emoji: '⚡',
+        size: 54, dodge: 0.2
+        },
+      regen: {
+        health: 15,
+        speed: 1.2,
+        damage: 40,
+        color: 'from-emerald-600 to-green-400',
+        emoji: '🧬',
+        size: 56, regen: 0.1
+        },
+      revive: {
+        health: 25,
+        speed: 0.6,
+        damage: 100,
+        color: 'from-violet-700 to-purple-500',
+        emoji: '♻️',
+        size: 62
+        },
+      dummy: {
+        health: 60,
+        speed: 0,
+        damage: 0,
+        color: 'from-gray-600 to-gray-400',
+        emoji: '🎭',
+        size: 64
+        },
+      leader: {
+        health: 30,
+        speed: 0.6,
+        damage: 200,
+        color: 'from-orange-700 to-red-500',
+        emoji: '👑',
+        size: 64
+        },
+      bug: {
+        health: 1,
+        speed: 0,
+        damage: 5000,
+        color: 'from-lime-700 to-lime-400',
+        emoji: '🐛',
+        size: 42,
+        dodge: 0.8
+        },
+      glitch: {
+        health: 3,
+        speed: 0,
+        damage: Infinity,
+        color: 'from-fuchsia-700 to-purple-500',
+        emoji: '🌀',
+        size: 46,
+        dodge: 0.8,
+        absolute: true,
+        glitch: true
+        },
+      glitchPhantom: {
+        health: 0,
+        speed: 1,
+        damage: 0,
+        color: 'from-purple-950 to-fuchsia-700',
+        emoji: '👁️',
+        size: 38,
+        phantom: true,
+        displayName: 'eye'
+      },
+      voidPulse: {
+        health: 1,
+        speed: 1.2,
+        damage: Infinity,
+        color: 'from-purple-700 to-fuchsia-500',
+        emoji: '🕳️',
+        size: 30,
+        voidPulse: true
+      },
+      hide: {
+        health: 20,
+        speed: 2,
+        damage: 100,
+        color: 'from-slate-800 to-gray-600',
+        emoji: '👤',
+        size: 58,
+        dodge: 0.15,
+        hidden: true
+      },
+      metal: {
+        health: 30,
+        speed: 0.1,
+        damage: 5,
+        color: 'from-zinc-600 to-slate-300',
+        emoji: '⚙️',
+        size: 64,
+        psn: 5,
+        fixedHealth: true
+      },
+      darkSplitter: {
+        health: 60,
+        speed: 0.3,
+        damage: 1000,
+        color: 'from-black to-black',
+        emoji: '',
+        size: 86,
+        darkBoss: true,
+        solidBlack: true
+      },
+      cyborg: {
+        health: 125,
+        speed: 0.15,
+        damage: 3000,
+        color: 'from-cyan-800 to-slate-400',
+        emoji: '🤖',
+        size: 90,
+        shield: 15,
+        cyborg: true,
+        psn: 30
+      },
+      voidGuard: {
+        health: 1200,
+        speed: 0.5,
+        damage: Infinity,
+        armor: 0.3,
+        color: 'from-gray-950 to-black',
+        emoji: '✡️',
+        size: 76,
+        voidOnly: true
+      },
+      voider: {
+        health: 3000,
+        speed: 0.4,
+        damage: Infinity,
+        armor: 0.2,
+        color: 'from-gray-950 to-black',
+        emoji: '🔯',
+        size: 82,
+        voidOnly: true,
+        voidPulse: true
+      },
+      darkVoid: {
+        health: 10000,
+        speed: 0.1,
+        damage: Infinity,
+        armor: 0.05,
+        color: 'from-purple-950 to-purple-700',
+        emoji: '🖤',
+        size: 100,
+        voidOnly: true
+      },
+      protect: {
+        health: 20,
+        speed: 1,
+        damage: 5,
+        color: 'from-emerald-700 to-green-400',
+        emoji: '🪖',
+        size: 52
+      },
+      shooter: {
+        health: 50,
+        speed: 1.5,
+        damage: 0,
+        color: 'from-sky-700 to-cyan-400',
+        emoji: '🏹',
+        size: 52,
+        shooter: true
+      },
+      blaze: {
+        health: 50,
+        speed: 2,
+        damage: 40,
+        color: 'from-orange-700 to-red-500',
+        emoji: '🔥',
+        size: 52,
+        blaze: true
+        },
+      phishing: {
+        health: 1000,
+        speed: 0.5,
+        damage: 90,
+        color: 'from-yellow-700 to-amber-400',
+        emoji: '💰',
+        size: 58,
+        dodge: 0.99
+        },
+      flock: {
+        health: 40,
+        speed: 0.6,
+        damage: 10,
+        color: 'from-pink-700 to-fuchsia-400',
+        emoji: '🎃',
+        size: 44
+        },
+      random: {
+        health: 50,
+        speed: 0.8,
+        damage: 60,
+        color: 'from-violet-700 to-indigo-400',
+        emoji: '❓',
+        size: 52,
+        randomDamage: true
+        },
+      rage: {
+        health: 80,
+        speed: 0.5,
+        damage: 200,
+        color: 'from-red-900 to-rose-500',
+        emoji: '😡',
+        size: 58,
+        rage: true
+        }
+    };
+    
+    // 적 생성
+    function spawnEnemy(forcedType = null, isBoss = false, spawnX = null, spawnY = null) {
+      const areaRect = gameArea.getBoundingClientRect();
+      const types = Object.keys(enemyTypes);
+      
+      let typeWeights;
+      if (gameState.wave <= 2) {
+        typeWeights = { normal: 0.8, slow: 0.1, fast: 0.1 };
+      } else if (gameState.wave <= 5) {
+        typeWeights = { normal: 0.5, slow: 0.25, fast: 0.25 };
+      } else {
+        typeWeights = { normal: 0.33, slow: 0.33, fast: 0.34 };
+      }
+      
+      const rand = Math.random();
+      let cumulative = 0;
+      let selectedType = forcedType || 'normal';
+      let specialSelected = false;
+      const availableSpecials = [];
+      if (gameState.wave >= 4) availableSpecials.push('protect');
+      if (gameState.wave >= 6) availableSpecials.push('shooter');
+      if (gameState.wave >= 8) availableSpecials.push('blaze');
+      if (gameState.wave >= 10) availableSpecials.push('flock');
+      if (gameState.wave >= 12) availableSpecials.push('random');
+      if (gameState.wave >= 14) availableSpecials.push('rage');
+      if (gameState.wave >= 21) availableSpecials.push('haste');
+      if (gameState.wave >= 31) availableSpecials.push('regen');
+      if (gameState.wave >= 36) availableSpecials.push('revive');
+      if (gameState.wave >= 34) availableSpecials.push('leader');
+      if (gameState.wave >= 29) availableSpecials.push('bug');
+      if (gameState.wave >= 38) availableSpecials.push('hide');
+      if (gameState.wave >= 41) availableSpecials.push('metal');
+      if (gameState.wave >= 45) availableSpecials.push('glitch');
+      if (selectedMap === 'cave' && gameState.wave >= 4) availableSpecials.push('protect');
+      if ((selectedMap === 'cave' && gameState.wave >= 22) || (selectedMap === 'forest' && gameState.wave >= 46)) availableSpecials.push('shooter');
+      if ((selectedMap === 'cave' && gameState.wave >= 27) || (selectedMap === 'forest' && gameState.wave >= 48)) availableSpecials.push('blaze');
+      if ((selectedMap === 'cave' && gameState.wave >= 35) || (selectedMap === 'forest' && gameState.wave >= 51)) availableSpecials.push('phishing');
+      if ((selectedMap === 'cave' && gameState.wave >= 29) || (selectedMap === 'forest' && gameState.wave >= 54)) availableSpecials.push('flock');
+      if ((selectedMap === 'cave' && gameState.wave >= 34) || (selectedMap === 'forest' && gameState.wave >= 58)) availableSpecials.push('rage');
+      if (!forcedType && availableSpecials.length && rand < 0.22) {
+        selectedType = availableSpecials[Math.floor(Math.random() * availableSpecials.length)];
+        specialSelected = true;
+      }
+      if (!forcedType && !specialSelected) {
+        if (gameState.wave >= 20) typeWeights = { normal: 0.2, slow: 0.12, fast: 0.18, shield: 0.16, heavy: 0.08, splitterA: 0.1, splitterB: 0.1, splitterC: 0.06 };
+        else if (gameState.wave >= 11) typeWeights = { normal: 0.28, slow: 0.16, fast: 0.2, shield: 0.14, heavy: 0.07, splitterA: 0.08, splitterB: 0.07, splitterC: 0 };
+        else if (gameState.wave >= 5) typeWeights = { normal: 0.38, slow: 0.2, fast: 0.22, shield: 0.12, heavy: 0, splitterA: 0.08, splitterB: 0, splitterC: 0 };
+        for (const type of types) {
+          cumulative += typeWeights[type] || 0;
+          if (rand <= cumulative) { selectedType = type; break; }
+        }
+      }
+      if (voidMode) {
+        if (!forcedType) {
+          if (gameState.wave >= 20 && Math.random() < 0.22) selectedType = 'darkVoid';
+          else if (gameState.wave >= 15 && Math.random() < 0.22) selectedType = 'voider';
+          else if (gameState.wave >= 10 && Math.random() < 0.22) selectedType = 'voidGuard';
+          else selectedType = ['haste','regen','revive','dummy','leader','bug','hide','metal','darkSplitter','cyborg'][Math.floor(Math.random() * 10)];
+        }
+      }
+      if (selectedType === 'flock' && !spawnX) {
+        for (let flockIndex = 0; flockIndex < 4; flockIndex++) spawnEnemy('flock', false, null, spawnY);
+      }
+      const typeData = enemyTypes[selectedType];
+      const y = spawnY ?? (Math.random() * (areaRect.height - typeData.size - 100) + 50);
+      const boss = isBoss || (gameState.wave >= 10 && gameState.wave % 10 === 0 && selectedType === 'heavy') || (gameState.wave >= 20 && gameState.wave % 20 === 0 && selectedType === 'splitterC');
+      const roll = Math.random();
+      const effect = boss || typeData.darkBoss ? 'boss' : (gameState.wave >= 50 && roll < 0.08 ? 'absolute' : gameState.wave >= 41 && roll < 0.16 ? 'bulletproof' : gameState.wave >= 8 && roll < 0.28 ? 'tough' : gameState.wave >= 31 && roll < 0.38 ? 'haste' : '');
+      const absoluteDamage = effect === 'absolute' || selectedType === 'glitch' ? 1 : 0;
+      const multiplier = boss ? 1.2 : 1;
+      const voidExclusive = ['voidGuard','voider','darkVoid'].includes(selectedType); const voidMultiplier = voidMode && !voidExclusive ? 10 : 1;
+      const enemy = {
+        id: Date.now() + Math.random(), type: selectedType, x: spawnX ?? -typeData.size, y: y,
+        health: typeData.fixedHealth ? typeData.health : typeData.health * Math.pow(1.02, Math.max(0, gameState.wave - 1)) * voidMultiplier,
+        maxHealth: typeData.fixedHealth ? typeData.health : typeData.health * Math.pow(1.02, Math.max(0, gameState.wave - 1)) * voidMultiplier,
+        speed: typeData.speed * 60 * (1 - metaUpgrades.slow * 0.1) * (boss ? 1.1 : 1),
+        baseSpeed: typeData.speed * 60 * (1 - metaUpgrades.slow * 0.1) * (boss ? 1.1 : 1),
+        damage: voidMode ? Infinity : typeData.damage * (boss ? 2 : 1),
+        baseDamage: voidMode ? Infinity : typeData.damage * (boss ? 2 : 1), armor: Math.min(0.95, (typeData.armor || 0) + (effect === 'tough' ? 0.25 : 0) + (effect === 'bulletproof' ? 0.5 : 0)),
+        shield: typeData.shield || 0, maxShield: typeData.shield || 0, boss, effect, absoluteDamage, dodge: typeData.dodge || 0, hidden: !!typeData.hidden, regen: typeData.regen || 0, psn: typeData.psn || 0, element: null,
+        lastShieldRegen: Date.now(),
+        lastSpecialAction: Date.now(),
+        laserUntil: 0,
+        revived: false,
+        dummyUntil: selectedType === 'dummy' ? Date.now() + 15000 : 0,
+        leaderBoost: false
+      };
+      const customEffect = document.getElementById('spawnEffect')?.value || '';
+      const customDodge = Math.max(0, Math.min(100, Number(document.getElementById('spawnDodge')?.value) || 0)) / 100;
+      const customArmor = Math.max(0, Math.min(95, Number(document.getElementById('spawnArmor')?.value) || 0)) / 100;
+      if (forcedType && customEffect) {
+        enemy.effect = customEffect;
+        enemy.absoluteDamage = customEffect === 'absolute' ? 1 : enemy.absoluteDamage;
+        enemy.armor = customEffect === 'tough' ? Math.min(0.95, enemy.armor + 0.25) : customEffect === 'bulletproof' ? Math.min(0.95, enemy.armor + 0.5) : enemy.armor;
+      }
+      if (forcedType && customDodge > 0) enemy.dodge = customDodge;
+      if (forcedType && customArmor > 0) enemy.armor = customArmor;
+      
+      const el = document.createElement('div');
+      el.className = `enemy absolute flex flex-col items-center transition-transform`;
+      el.style.left = enemy.x + 'px';
+      el.style.top = enemy.y + 'px';
+      el.style.width = typeData.size + 'px';
+      el.innerHTML = `
+        <div class="w-full h-2 bg-gray-700 rounded-full mb-1 overflow-hidden">
+          <div class="health-bar h-full bg-gradient-to-r ${typeData.color} transition-all duration-100" style="width: 100%"></div>
+        </div>
+        <div class="relative flex items-center justify-center" style="width:${typeData.size}px;height:${typeData.size}px">
+          ${typeData.shield ? '<div class="shield-ring absolute inset-0 rounded-full border-4 border-cyan-300/70 bg-cyan-400/20 shadow-[0_0_14px_#67e8f9]"></div>' : ''}
+          <div class="text-3xl relative ${typeData.solidBlack ? 'rounded-full bg-black border-2 border-gray-950' : ''}" style="font-size: ${typeData.size * 0.7}px;width:${typeData.size}px;height:${typeData.size}px">${typeData.solidBlack ? '' : typeData.emoji}</div>
+          ${boss ? '<span class="absolute -top-5 text-xs font-bold text-yellow-300">👑 보스</span>' : ''}
+          <span class="absolute -bottom-5 whitespace-nowrap text-[10px] font-bold text-white bg-black/70 px-1 rounded">${({normal:'노멀',fast:'스피드',slow:'슬로우',haste:'헤이스트',regen:'리젠',revive:'리바이브',dummy:'더미',leader:'리더',bug:'버그',hide:'하이드',metal:'메탈',darkSplitter:'다크 스플리터',cyborg:'사이보그',glitchPhantom:'eye'}[selectedType] || typeData.displayName || selectedType)}${effect && effect !== 'boss' ? ' · ' + ({tough:'단단함',bulletproof:'방탄',absolute:'절대 방어',haste:'재빠름'}[effect] || effect) : ''}</span>
+        </div>
+      `;
+      el.dataset.enemyId = enemy.id;
+      
+      gameArea.appendChild(el);
+      enemy.element = el;
+      gameState.enemies.push(enemy);
+    }
+    
+    // 적 업데이트
+    function updateEnemies(deltaTime) {
+      const areaRect = gameArea.getBoundingClientRect();
+      if (turretOwned && gameState.wave >= 11 && Date.now() - turretLastShot >= 500) {
+        const target = gameState.enemies[0];
+        if (target) { turretLastShot = Date.now(); hitEnemy(target, 2); }
+      }
+      const baseX = areaRect.width;
+      
+      for (let i = gameState.enemies.length - 1; i >= 0; i--) {
+        const enemy = gameState.enemies[i];
+        const now = Date.now();
+        const leaderPresent = gameState.enemies.some(other => other.type === 'leader' && other !== enemy && other.health > 0);
+        const leaderMultiplier = leaderPresent ? 1.2 : 1;
+        const leaderDamageMultiplier = leaderPresent ? 3 : 1;
+        enemy.speed = enemy.baseSpeed * leaderMultiplier;
+        enemy.damage = enemy.baseDamage * leaderDamageMultiplier;
+        if (enemy.type === 'dummy' && enemy.dummyUntil && now >= enemy.dummyUntil) {
+          const x = enemy.x, y = enemy.y;
+          const index = gameState.enemies.indexOf(enemy);
+          if (index > -1) removeEnemy(index);
+          spawnEnemy('revive', false, x, y);
+          continue;
+        }
+        if (enemy.type === 'regen' && enemy.health > 0) {
+          enemy.health = Math.min(enemy.maxHealth, enemy.health + enemy.maxHealth * 0.10 * deltaTime);
+          const regenBar = enemy.element.querySelector('.health-bar');
+          if (regenBar) regenBar.style.width = Math.max(0, enemy.health / enemy.maxHealth * 100) + '%';
+        }
+        if (enemy.type === 'shooter' && now - enemy.lastSpecialAction >= 1000) {
+          enemy.lastSpecialAction = now;
+          damageBase(10);
+        }
+        if (enemy.type === 'blaze' && enemy.x + enemyTypes.blaze.size >= baseX) {
+          enemy.element.dataset.burning = 'true';
+          base.dataset.burningUntil = String(now + 4000);
+        }
+        if (base.dataset.burningUntil && now < Number(base.dataset.burningUntil)) damageBase(10 * deltaTime);
+        if (enemy.type === 'rage' && enemy.element.matches(':hover')) enemy.speed *= Math.pow(1.05, deltaTime);
+        if (enemy.type === 'bug' && Math.random() < 0.20 * deltaTime) enemy.x += areaRect.width * 0.12;
+        if (enemy.type === 'darkSplitter' && now - enemy.lastSpecialAction >= 10000) {
+          enemy.lastSpecialAction = now;
+          const pattern = Math.floor(Math.random() * 4);
+          if (pattern === 0) for (let n=0;n<2;n++) spawnEnemy('splitterC', false, enemy.x+10, enemy.y+n*18);
+          if (pattern === 1) { spawnEnemy('splitterC', false, enemy.x+10, enemy.y); for(let n=0;n<2;n++) spawnEnemy('splitterB',false,enemy.x+20,enemy.y+n*18); }
+          if (pattern === 2) { for(let n=0;n<3;n++) spawnEnemy('splitterB',false,enemy.x+20,enemy.y+n*16); for(let n=0;n<2;n++) spawnEnemy('splitterA',false,enemy.x+30,enemy.y+n*14); }
+          if (pattern === 3) for(let n=0;n<20;n++) spawnEnemy('splitterA',false,enemy.x+20+(n%5)*12,enemy.y+Math.floor(n/5)*14);
+        }
+        if (enemy.type === 'cyborg' && now - enemy.lastSpecialAction >= 30000) {
+          enemy.lastSpecialAction = now;
+          for (let n=0;n<3;n++) spawnEnemy('metal', false, enemy.x + 8, enemy.y + n * 18);
+          enemy.laserUntil = now + 5000;
+        }
+        if (enemy.type === 'voider' && now - enemy.lastSpecialAction >= 5000) {
+          enemy.lastSpecialAction = now;
+          for (let p = 0; p < 3; p++) spawnEnemy('voidPulse', false, enemy.x - 20, enemy.y + (p - 1) * 28);
+        }
+        if (enemy.type === 'voidPulse') {
+          enemy.x += 80 * deltaTime;
+          if (enemy.x > baseX) removeEnemy(i);
+          continue;
+        }
+        if (enemy.type === 'glitch' && Math.random() < 0.30 * deltaTime) {
+          enemy.x += areaRect.width * 0.12;
+          if (Math.random() < 0.05) spawnEnemy('glitchPhantom');
+        }
+        if (enemy.type === 'glitchPhantom') {
+          enemy.x += (Math.random() * 2) * deltaTime * 60;
+          if (enemy.x > baseX) removeEnemy(i);
+          continue;
+        }
+        if (enemy.type === 'cyborg' && enemy.laserUntil > now) damageBase(5 * deltaTime);
+        if (enemy.type === 'cyborg' && now - enemy.lastShieldRegen >= 20000) {
+          enemy.lastShieldRegen = now;
+          gameState.enemies.forEach(other => { if (other !== enemy) { other.shield = Math.max(other.shield || 0, 15); other.maxShield = Math.max(other.maxShield || 0, 15); } });
+        }
+        if (enemy.maxShield && enemy.shield <= 0 && Date.now() - enemy.lastShieldRegen >= 5000) {
+          enemy.lastShieldRegen = Date.now();
+          if (Math.random() < 0.5) {
+            enemy.shield = enemy.maxShield;
+            const ring = enemy.element.querySelector('.shield-ring');
+            if (ring) ring.style.opacity = '1';
+          }
+        }
+        enemy.x += enemy.speed * deltaTime;
+        enemy.element.style.left = enemy.x + 'px';
+        
+        const typeData = enemyTypes[enemy.type];
+        if (enemy.x + typeData.size >= baseX) {
+          damageBase(enemy.damage + (enemy.psn || 0));
+          removeEnemy(i);
+        }
+      }
+    }
+    
+    // 기지 데미지
+    function damageBase(damage) {
+      if (activeModifiers.has('glass')) gameState.baseHealth = 0;
+      else gameState.baseHealth = Math.max(0, gameState.baseHealth - damage);
+      if (archiveMode) updateArchiveHud();
+      if (metaUpgrades.thorn > 0) {
+        const thornDamage = damage * metaUpgrades.thorn * 0.05;
+        gameState.enemies.slice().forEach(other => { if (other) hitEnemy(other, thornDamage); });
+      }
+      updateHealthDisplay();
+      base.classList.remove('base-hit');
+      void base.offsetWidth;
+      base.classList.add('base-hit');
+      
+      if (gameState.baseHealth <= 0) {
+        if (archiveMode) {
+          archiveMode = false;
+          clearInterval(archiveBreakTimer);
+          clearInterval(archiveWaveTimer);
+          document.getElementById('archiveBreakBox')?.remove();
+          archiveScreen.classList.add('hidden');
+        }
+        gameOver();
+      }
+    }
+    
+    // 체력 표시 업데이트
+    function formatNumber(value) {
+      return Number(value || 0).toFixed(1);
+    }
+    function updateHealthDisplay() {
+      const percent = Math.max(0, Math.min(100, (gameState.baseHealth / gameState.maxHealth) * 100));
+      healthBar.style.width = percent + '%';
+      healthText.textContent = `${formatNumber(gameState.baseHealth)} / ${formatNumber(gameState.maxHealth)}`;
+    }
+    
+    // 적 제거
+    function removeEnemy(index) {
+      const enemy = gameState.enemies[index];
+      if (enemy.element) {
+        enemy.element.remove();
+      }
+      gameState.enemies.splice(index, 1);
+    }
+    
+    // 사격
+    function shoot(e) {
+      if (removeEnemyMode || !gameState.isRunning) return;
+      if (activeModifiers.has('jam') && Math.random() < 0.5) return;
+      
+      const now = Date.now();
+      if (now - gameState.lastShot < gameState.fireRate) return;
+      gameState.lastShot = now;
+      
+      muzzleFlash.classList.remove('muzzle-flash');
+      muzzleFlash.style.opacity = '1';
+      void muzzleFlash.offsetWidth;
+      muzzleFlash.classList.add('muzzle-flash');
+      
+      const rect = gameArea.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      
+      let closestEnemy = null;
+      let closestDist = Infinity;
+      
+      for (const enemy of gameState.enemies) {
+        const typeData = enemyTypes[enemy.type];
+        const enemyCenterX = enemy.x + typeData.size / 2;
+        const enemyCenterY = enemy.y + typeData.size / 2;
+        
+        const dist = Math.sqrt(
+          Math.pow(clickX - enemyCenterX, 2) + 
+          Math.pow(clickY - enemyCenterY, 2)
+        );
+        
+        if (dist < typeData.size + 30 && dist < closestDist) {
+          closestDist = dist;
+          closestEnemy = enemy;
+        }
+      }
+      
+      if (closestEnemy) {
+        hitEnemy(closestEnemy);
+      }
+      
+      createBulletTrail(clickX, clickY);
+    }
+    
+    // 총알 궤적 이펙트
+    function createBulletTrail(targetX, targetY) {
+      const rect = gameArea.getBoundingClientRect();
+      const startX = rect.width - 30;
+      const startY = rect.height - 50;
+      
+      const trail = document.createElement('div');
+      trail.className = 'absolute w-2 h-2 bg-yellow-400 rounded-full pointer-events-none';
+      trail.style.left = startX + 'px';
+      trail.style.top = startY + 'px';
+      trail.style.transition = 'all 0.1s linear';
+      trail.style.boxShadow = '0 0 10px #fbbf24';
+      gameArea.appendChild(trail);
+      
+      requestAnimationFrame(() => {
+        trail.style.left = targetX + 'px';
+        trail.style.top = targetY + 'px';
+        trail.style.opacity = '0';
+      });
+      
+      setTimeout(() => trail.remove(), 150);
+    }
+    
+    // 적 피격
+    function hitEnemy(enemy, forcedDamage = null) {
+      const weaponData = weaponStats.rifle;
+      if (enemy.hidden && metaUpgrades.detector !== true) return;
+      if (forcedDamage === null && enemy.dodge && Math.random() < enemy.dodge) return;
+      let incoming = enemy.randomDamage ? (enemy.randomRoll ??= 1 + Math.floor(Math.random() * 10)) : (enemy.type === 'metal' ? 1 : (forcedDamage ?? (((enemy.effect === 'absolute' || enemy.type === 'metal' || enemy.type === 'glitch') && !metaUpgrades.armorBreak) || enemy.type === 'glitch' ? enemy.absoluteDamage || 0 : gameState.damage * weaponData.damage * (1 + metaUpgrades.damage * 0.1))));
+      if (enemy.shield > 0) {
+        enemy.shield = Math.max(0, enemy.shield - incoming);
+        const ring = enemy.element.querySelector('.shield-ring');
+        if (ring) ring.style.opacity = enemy.shield / enemy.maxShield;
+        incoming = 0;
+      } else {
+        incoming *= (1 - (enemy.armor || 0));
+        if (enemy.boss) incoming *= 0.75;
+      }
+      enemy.health -= incoming;
+      
+      enemy.element.classList.add('hit-flash');
+      setTimeout(() => enemy.element.classList.remove('hit-flash'), 100);
+      
+      const healthBar = enemy.element.querySelector('.health-bar');
+      const percent = Math.max(0, (enemy.health / enemy.maxHealth) * 100);
+      healthBar.style.width = percent + '%';
+      
+      if (enemy.health <= 0) {
+        if (enemy.type === 'rage') enemy.speed = enemy.baseSpeed;
+        if (enemy.type === 'revive') {
+          spawnEnemy('dummy', false, enemy.x, enemy.y);
+        }
+        const index = gameState.enemies.indexOf(enemy);
+        if (index > -1) {
+          createExplosion(enemy.x, enemy.y);
+          
+          // 돈 획득
+          const moneyGain = enemy.type === 'leader' ? 0 : (moneyDrops[enemy.type] || 0);
+          gameState.money += moneyGain;
+          moneyDisplay.textContent = gameState.money;
+          if (enemyTypes[enemy.type].splitsInto) {
+            for (let s = 0; s < enemyTypes[enemy.type].splitCount; s++) {
+              spawnEnemy(enemyTypes[enemy.type].splitsInto, false, enemy.x + 8, enemy.y + (s - 1) * 18);
+              enemiesSpawnedThisWave++;
+            }
+          }
+          removeEnemy(index);
+          gameState.kills++;
+          killsDisplay.textContent = gameState.kills;
+          
+          checkWaveProgress();
+        }
+      }
+    }
+    
+    // 폭발 이펙트
+    function createExplosion(x, y) {
+      const explosion = document.createElement('div');
+      explosion.className = 'absolute pointer-events-none text-4xl';
+      explosion.style.left = x + 'px';
+      explosion.style.top = y + 'px';
+      explosion.textContent = '💥';
+      explosion.style.transition = 'all 0.3s ease-out';
+      gameArea.appendChild(explosion);
+      
+      requestAnimationFrame(() => {
+        explosion.style.transform = 'scale(1.5)';
+        explosion.style.opacity = '0';
+      });
+      
+      setTimeout(() => explosion.remove(), 300);
+    }
+    
+    // 업그레이드 비용 계산
+    function calculateNextUpgradeCost(currentCost) {
+      const newCost = currentCost * 1.5 + 5;
+      return Math.round(newCost / 10) * 10;
+    }
+    
+    // 업그레이드 함수
+    function tokenCost(kind) {
+      if (kind === 'base') return 10 + metaUpgrades.base * 5;
+      if (kind === 'damage') return Math.floor(20 * Math.pow(1.25, metaUpgrades.damage));
+      if (kind === 'slow') return metaUpgrades.slow === 0 ? 100 : 1000;
+      return [200, 500, 1500, 5000][metaUpgrades.thorn] || 0;
+    }
+    function buyTurret() {
+      const btn = document.getElementById('turretUpgradeBtn');
+      if (turretOwned || gameState.wave < 11 || gameState.money < 1000) return;
+      gameState.money -= 1000; turretOwned = true; updateUI();
+    }
+    function buyMeta(kind) {
+      const max = { slow: 2, thorn: 4 }[kind];
+      if (max && metaUpgrades[kind] >= max) return;
+      const cost = tokenCost(kind);
+      if (gameState.money < cost) return;
+      gameState.money -= cost; metaUpgrades[kind]; metaUpgrades[kind]++;
+      if (kind === 'base') { gameState.maxHealth += 10; gameState.baseHealth += 10; updateHealthDisplay(); }
+      updateUI();
+    }
+    function selectWeapon(kind) { weapon = 'rifle'; gameState.weapon = 'rifle'; gameState.fireRate = 250; gameState.damage = 1.5; updateUI(); }
+    function upgrade() {
+      if (gameState.gunLevel >= 100) return;
+      if (gameState.money < gameState.nextUpgradeCost) return;
+      
+      gameState.money -= gameState.nextUpgradeCost;
+      gameState.gunLevel++;
+      gameState.damage += 0.3;
+      gameState.fireRate = Math.max(100, gameState.fireRate * 0.99);
+      
+      const oldCost = gameState.nextUpgradeCost;
+      gameState.nextUpgradeCost = calculateNextUpgradeCost(oldCost);
+      
+      updateUI();
+    }
+    
+    // UI 업데이트
+    function safeMoney(value) {
+      if (!Number.isFinite(value)) return 0;
+      return Math.max(0, Math.floor(value));
+    }
+    function updateUI() {
+      gameState.money = safeMoney(gameState.money);
+      moneyDisplay.textContent = gameState.money;
+      const panelLevel = document.getElementById('panelLevel');
+      const panelDamage = document.getElementById('panelDamage');
+      const panelFireRate = document.getElementById('panelFireRate');
+      if (panelLevel) panelLevel.textContent = gameState.gunLevel + '/100';
+      if (panelDamage) panelDamage.textContent = gameState.damage.toFixed(1);
+      if (panelFireRate) panelFireRate.textContent = (1000 / gameState.fireRate).toFixed(1);
+      document.getElementById('weaponUpgradeTitle').textContent = '🔫 ' + weaponStats[weapon].name + ' 업그레이드';
+      
+      // 업그레이드 패널
+      document.getElementById('panelTokens').textContent = gameState.money;
+      const detectorBtn = document.getElementById('detectorBtn'), armorBreakBtn = document.getElementById('armorBreakBtn');
+      detectorBtn.disabled = metaUpgrades.detector || gameState.wave < 25 || gameState.money < 1000;
+      detectorBtn.textContent = metaUpgrades.detector ? '✅ 탐지기 보유' : gameState.wave < 25 ? '🔒 25웨이브부터 구매' : '🔎 1000💰에 구매';
+      armorBreakBtn.disabled = metaUpgrades.armorBreak || gameState.wave < 40 || gameState.money < 3000;
+      armorBreakBtn.textContent = metaUpgrades.armorBreak ? '✅ 방어 파쇄 보유' : gameState.wave < 40 ? '🔒 40웨이브부터 구매' : '⚔️ 3000💰에 구매';
+      const turretBtn = document.getElementById('turretUpgradeBtn');
+      document.getElementById('turretStatus').textContent = turretOwned ? '✅ 설치됨' : (gameState.wave >= 11 ? '구매 가능' : '🔒 잠김');
+      document.getElementById('turretVisual').style.opacity = turretOwned ? '1' : '0';
+      turretBtn.disabled = turretOwned || gameState.wave < 11 || gameState.money < 1000;
+      turretBtn.textContent = turretOwned ? '✅ 터렛 설치 완료' : (gameState.wave < 11 ? '🔒 11웨이브부터 구매' : '🔫 1000💰에 구매');
+      const metaLabels = { base: ['baseUpgradeInfo','baseUpgradeLevel','baseUpgradeCost'], damage: ['damageUpgradeInfo','damageUpgradeLevel','damageUpgradeCost'], slow: ['slowUpgradeInfo','slowUpgradeLevel','slowUpgradeCost'], thorn: ['thornUpgradeInfo','thornUpgradeLevel','thornUpgradeCost'] };
+      document.getElementById('baseUpgradeInfo').textContent = gameState.maxHealth;
+      document.getElementById('baseUpgradeLevel').textContent = metaUpgrades.base;
+      document.getElementById('baseUpgradeCost').textContent = tokenCost('base') + '💰';
+      document.getElementById('damageUpgradeInfo').textContent = '×' + (1 + metaUpgrades.damage * 0.1).toFixed(1);
+      document.getElementById('damageUpgradeLevel').textContent = metaUpgrades.damage;
+      document.getElementById('damageUpgradeCost').textContent = tokenCost('damage') + '💰';
+      document.getElementById('slowUpgradeInfo').textContent = (metaUpgrades.slow * 10) + '%';
+      document.getElementById('slowUpgradeLevel').textContent = metaUpgrades.slow;
+      document.getElementById('slowUpgradeCost').textContent = metaUpgrades.slow >= 2 ? '최대' : tokenCost('slow') + '💰';
+      document.getElementById('thornUpgradeInfo').textContent = (metaUpgrades.thorn * 5) + '%';
+      document.getElementById('thornUpgradeLevel').textContent = metaUpgrades.thorn;
+      document.getElementById('thornUpgradeCost').textContent = metaUpgrades.thorn >= 4 ? '최대' : tokenCost('thorn') + '💰';
+      ['base','damage','slow','thorn'].forEach(k => { const b=document.getElementById(k+'UpgradeBtn'); b.disabled = (gameState.money < tokenCost(k)) || ((k==='slow'&&metaUpgrades[k]>=2)||(k==='thorn'&&metaUpgrades[k]>=4)); });
+      document.getElementById('rifleBtn').classList.toggle('ring-2', weapon==='rifle');
+      document.getElementById('panelMoney').textContent = gameState.money;
+      document.getElementById('panelLevel').textContent = gameState.gunLevel + '/100';
+      document.getElementById('panelDamage').textContent = gameState.damage.toFixed(1);
+      document.getElementById('panelFireRate').textContent = (1000 / gameState.fireRate).toFixed(1);
+      document.getElementById('nextUpgradeCost').textContent = gameState.nextUpgradeCost + '💰';
+      
+      const upgradeBtn = document.getElementById('upgradeBtn');
+      if (gameState.gunLevel >= 100) {
+        upgradeBtn.disabled = true;
+        upgradeBtn.textContent = '✅ 최대 레벨';
+      } else if (gameState.money < gameState.nextUpgradeCost) {
+        upgradeBtn.disabled = true;
+        upgradeBtn.textContent = '💰 부족';
+      } else {
+        upgradeBtn.disabled = false;
+        upgradeBtn.textContent = '⬆️ 업그레이드';
+      }
+    }
+    
+    // 웨이브 진행 체크
+    let enemiesThisWave = 0;
+    let enemiesSpawnedThisWave = 0;
+    
+    function checkAchievements() {
+      if (gameState.kills >= 100) achievementState.kills100 = true;
+      if (gameState.kills >= 1500) achievementState.kills1500 = true;
+      if (gameState.kills >= 20000) achievementState.kills20000 = true;
+      if (enemiesSpawnedThisWave >= 300) achievementState.wave300 = true;
+      if (activeModifiers.has('glass') && gameState.wave >= 50) achievementState.glass50 = true;
+      if (gameState.fireRate <= 180) achievementState.ammoSaver = true;
+      updateAchievementUI();
+    }
+
+    function checkWaveProgress() {
+      checkAchievements();
+      if (gameState.enemies.length === 0 && enemiesSpawnedThisWave >= enemiesThisWave) {
+        if (voidMode) { gameState.wave++; document.getElementById('voidWaveLabel').textContent = gameState.wave; enemiesThisWave = 20 + gameState.wave * 8; enemiesSpawnedThisWave = 0; gameState.isRunning = true; return; }
+        gameState.isRunning = false;
+        startWaveBreak();
+      }
+    }
+    
+    // 웨이브 휴식 시작
+    function startWaveBreak() {
+      const nextWave = gameState.wave + 1;
+      document.getElementById('nextWaveNum').textContent = nextWave;
+      waveBreakScreen.classList.remove('hidden');
+      
+      let remainingTime = 30;
+      
+      function updateBreakUI() {
+        document.getElementById('breakTimer').textContent = remainingTime;
+        const progress = (remainingTime / 30) * 100;
+        document.getElementById('breakProgress').style.width = progress + '%';
+      }
+      
+      updateBreakUI();
+      
+      const breakInterval = setInterval(() => {
+        remainingTime--;
+        updateBreakUI();
+        
+        if (remainingTime <= 0) {
+          clearInterval(breakInterval);
+          closeUpgradePanel();
+          waveBreakScreen.classList.add('hidden');
+          startNextWave();
+        }
+      }, 1000);
+      
+      document.getElementById('upgradeSkipBtn').onclick = () => {
+        clearInterval(breakInterval);
+        closeUpgradePanel();
+        waveBreakScreen.classList.add('hidden');
+        startNextWave();
+      };
+    }
+    
+    // 다음 웨이브 시작
+    function startNextWave() {
+      gameState.wave++;
+      checkAchievements();
+      updateAchievementUI();
+      waveDisplay.textContent = gameState.wave;
+      gameState.isRunning = true;
+      startWave();
+      lastTime = performance.now();
+      requestAnimationFrame(gameLoop);
+    }
+    
+    // 웨이브 시작
+    function startWave() {
+      enemiesThisWave = Math.ceil((5 + gameState.wave * 2) * (activeModifiers.has('over') ? 10 : activeModifiers.has('more') ? 3 : activeModifiers.has('many') ? 1.5 : 1));
+      enemiesSpawnedThisWave = 0;
+      if (gameState.wave >= 10 && gameState.wave % 10 === 0) { enemiesThisWave++; spawnEnemy('heavy', true); enemiesSpawnedThisWave++; }
+      if (gameState.wave >= 20 && gameState.wave % 20 === 0) { enemiesThisWave++; spawnEnemy('splitterC', true); enemiesSpawnedThisWave++; }
+      if (gameState.wave === 30) { enemiesThisWave++; spawnEnemy('darkSplitter', true); enemiesSpawnedThisWave++; }
+      if (gameState.wave === 40) { enemiesThisWave++; spawnEnemy('cyborg', true); enemiesSpawnedThisWave++; }
+    }
+    
+    // 게임 오버
+    function gameOver() {
+      gameState.isRunning = false;
+      document.getElementById('finalKills').textContent = gameState.kills;
+      document.getElementById('finalWave').textContent = gameState.wave;
+      document.getElementById('finalMoney').textContent = gameState.money;
+      
+      gameOverScreen.classList.remove('hidden');
+    }
+    
+    // 게임 시작
+    function startGame() {
+      bugFloor = false;
+      voidMode = false;
+      archiveMode = false;
+      document.getElementById('gameContainer').classList.remove('void-mode');
+      document.getElementById('voidTitle').classList.add('hidden');
+      base.style.display = '';
+      gameState = {
+        baseHealth: 100 + metaUpgrades.base * 10,
+        maxHealth: 100 + metaUpgrades.base * 10,
+        money: 0,
+        kills: 0,
+        wave: 1,
+        enemies: [],
+        isRunning: true,
+        lastShot: 0,
+        fireRate: 250,
+        damage: 1.5,
+        gunLevel: 1,
+        nextUpgradeCost: 25
+      };
+      
+      gameArea.querySelectorAll('.enemy').forEach(el => el.remove());
+      
+      updateHealthDisplay();
+      killsDisplay.textContent = '0';
+      waveDisplay.textContent = '1';
+      moneyDisplay.textContent = '0';
+      updateUI();
+      
+      startScreen.classList.add('hidden');
+      gameOverScreen.classList.add('hidden');
+      waveBreakScreen.classList.add('hidden');
+      closeUpgradePanel();
+      
+      startWave();
+      
+      lastTime = performance.now();
+      requestAnimationFrame(gameLoop);
+    }
+    
+    // 게임 루프
+    let lastTime = 0;
+    let spawnTimer = 0;
+    let bugFloor = false;
+    let voiderPulseTimer = 0;
+    
+    function gameLoop(currentTime) {
+      // 기록실은 자체 타이머를 사용하므로 일반 플로어 루프가 절대 함께 실행되지 않습니다.
+      if (!gameState.isRunning || archiveMode || !archiveScreen.classList.contains('hidden')) return;
+      
+      const deltaTime = (currentTime - lastTime) / 1000;
+      lastTime = currentTime;
+      
+      spawnTimer += deltaTime;
+      const spawnInterval = Math.max(0.8, 2 - gameState.wave * 0.1);
+      
+      if (bugFloor) {
+        if (spawnTimer >= 1) {
+          spawnEnemy('bug'); spawnEnemy('glitch');
+          spawnTimer = 0;
+        }
+      } else if (spawnTimer >= spawnInterval && enemiesSpawnedThisWave < enemiesThisWave) {
+        spawnEnemy();
+        enemiesSpawnedThisWave++;
+        spawnTimer = 0;
+      }
+      
+      updateEnemies(deltaTime);
+      
+      if (gameState.enemies.length === 0 && enemiesSpawnedThisWave >= enemiesThisWave) {
+        checkWaveProgress();
+      }
+      
+      requestAnimationFrame(gameLoop);
+    }
+    
+    // 업그레이드 패널 열기/닫기
+    function openUpgradePanel() {
+      upgradePanel.style.zIndex = archiveMode ? '140' : '60';
+      upgradePanel.style.transform = 'translateX(0)';
+      updateUI();
+    }
+    
+    function closeUpgradePanel() {
+      upgradePanel.style.transform = 'translateX(100%)';
+    }
+    
+    // 포기 확인은 브라우저 대화상자 대신 화면 안에서 표시합니다.
+    function showQuitPrompt() {
+      if ((!gameState.isRunning && !archiveMode) || document.getElementById('quitPrompt')) return;
+      gameState.isRunning = false;
+      const prompt = document.createElement('div');
+      prompt.id = 'quitPrompt';
+      prompt.className = 'absolute inset-0 z-[110] flex items-center justify-center bg-black/80';
+      prompt.innerHTML = '<div class="rounded-2xl border-2 border-red-500 bg-gray-900 p-7 text-center text-white"><h2 class="mb-3 text-2xl font-bold text-red-300">게임을 포기하시겠습니까?</h2><p class="mb-5 text-gray-300">현재 진행 상황은 사라집니다.</p><div class="flex gap-3 justify-center"><button id="quitYes" class="rounded-lg bg-red-600 px-6 py-2 font-bold">예</button><button id="quitNo" class="rounded-lg bg-gray-600 px-6 py-2 font-bold">아니오</button></div></div>';
+      document.getElementById('gameContainer').appendChild(prompt);
+      prompt.querySelector('#quitYes').onclick = () => { prompt.remove(); archiveMode=false; clearInterval(archiveBreakTimer); clearInterval(archiveWaveTimer); document.getElementById('archiveBreakBox')?.remove(); archiveScreen.classList.add('hidden'); gameState.enemies.forEach(e => e.element.remove()); gameState.enemies = []; gameOverScreen.classList.add('hidden'); waveBreakScreen.classList.add('hidden'); cheatPanel.classList.add('hidden'); startScreen.classList.remove('hidden'); };
+      prompt.querySelector('#quitNo').onclick = () => { prompt.remove(); gameState.isRunning = true; lastTime = performance.now(); requestAnimationFrame(gameLoop); };
+    }
+
+    // 기록실 플로어: A~Z, 섹션마다 10웨이브
+    const archiveScreen = document.getElementById('archiveScreen');
+    const archiveGameArea = document.getElementById('archiveGameArea');
+    const archiveContinue = document.getElementById('archiveContinue');
+    let archiveMode = false, archiveSection = 0, archiveWave = 1, archiveSkipCost = 50, lastArchiveShot = 0;
+    const archiveTypes = {
+      protect:{name:'프로텍트',emoji:'▣',health:20,speed:1,damage:5}, shooter:{name:'슈터',emoji:'☻',health:50,speed:1.5,damage:30}, blaze:{name:'블레이즈',emoji:'◆',health:50,speed:2,damage:40}, phishing:{name:'피싱',emoji:'$',health:1000,speed:.5,damage:90}, flock:{name:'플록',emoji:'✿',health:40,speed:.6,damage:10}, random:{name:'랜덤',emoji:'?',health:50,speed:.8,damage:60}, rage:{name:'레이지',emoji:'◉',health:80,speed:.5,damage:200}
+    };
+    function archiveName(){ return String.fromCharCode(65 + archiveSection); }
+    function updateArchiveHud(){ document.getElementById('archiveSectionLabel').textContent=archiveName(); document.getElementById('archiveSectionHud').textContent=archiveName(); document.getElementById('archiveWaveHud').textContent=archiveWave; document.getElementById('archiveMoneyHud').textContent=safeMoney(gameState.money); const healthHud=document.getElementById('archiveHealthHud'); if(healthHud) healthHud.textContent=`${formatNumber(gameState.baseHealth)} / ${formatNumber(gameState.maxHealth)}`; const rateHud=document.getElementById('archiveRateHud'); if(rateHud) rateHud.textContent=(1000/gameState.fireRate).toFixed(1)+'발/초'; }
+    function archiveSpawn(type, waveSet=archiveWaveEnemies){ const d=archiveTypes[type]; if(!d) return; const el=document.createElement('button'); let hp=d.health; let rageSpeed=d.speed; let randomDamage=1; let hoverStarted=Date.now(); waveSet.add(el); el.className='enemy absolute z-10 flex flex-col items-center text-white'; el.style.left='-50px'; el.style.top=(20+Math.random()*65)+'%'; el.style.width='72px'; el.title=d.name; el.innerHTML=`<div class="mb-1 h-2 w-full overflow-hidden rounded-full bg-gray-700"><div class="archive-hp-bar h-full bg-gradient-to-r from-red-500 to-green-400" style="width:100%"></div></div><div class="flex h-12 w-12 items-center justify-center text-4xl leading-none">${d.emoji}</div><div class="mt-1 whitespace-nowrap rounded bg-black/70 px-1 text-[10px] font-bold text-white">${d.name}</div>`; archiveGameArea.appendChild(el); let x=-50; let removed=false; const finishEnemy=()=>{ if(removed)return; removed=true; clearInterval(timer); waveSet.delete(el); el.remove(); finishArchiveWaveIfReady(); }; const timer=setInterval(()=>{ if(!archiveMode){finishEnemy();return;} if(type==='rage' && el.matches(':hover')) rageSpeed*=1.05; x+=rageSpeed; el.style.left=x+'px'; if(x>archiveGameArea.clientWidth-70){ finishEnemy(); damageBase(type==='blaze' ? d.damage+10 : type==='random' ? randomDamage : d.damage); updateArchiveHud(); } },50); el.onmouseenter=()=>{hoverStarted=Date.now();}; el.onmouseleave=()=>{}; el.onclick=(event)=>{ event.stopPropagation(); const now=Date.now(); if(now-lastArchiveShot<gameState.fireRate)return; lastArchiveShot=now; if(type==='phishing' && Math.random()<.9)return; if(type==='random') randomDamage=1+Math.floor(Math.random()*10); const damage=type==='random' ? randomDamage : Math.max(0.1, gameState.damage * weaponStats.rifle.damage * (1 + metaUpgrades.damage * 0.1)); hp=Math.max(0,hp-damage); const bar=el.querySelector('.archive-hp-bar'); if(bar) bar.style.width=(hp/d.health*100)+'%'; el.classList.add('hit-flash'); setTimeout(()=>el.classList.remove('hit-flash'),100); if(hp<=0){ if(type==='ransom')gameState.money=Infinity; else gameState.money+=5; updateArchiveHud(); finishEnemy(); } }; }
+    let archiveBreakTimer = null;
+    let archiveWaveTimer = null;
+    let archiveSpawnTimer = null;
+    let archiveWaveEnemies = new Set();
+    function finishArchiveWaveIfReady(){
+      if(!archiveMode || gameState.baseHealth<=0) return;
+      if(archiveWaveEnemies.size>0 || archiveSpawnTimer!==null) return;
+      if(archiveWave>=10) finishArchiveSection();
+      else { archiveWave++; startArchiveBreak(); }
+    }
+    function startArchiveWave(){
+      if(!archiveMode || gameState.baseHealth<=0) return;
+      archiveWave=Math.max(1,archiveWave); updateArchiveHud();
+      const total=4+archiveWave; let made=0;
+      clearInterval(archiveWaveTimer); clearTimeout(archiveWaveTimer); clearTimeout(archiveSpawnTimer);
+      archiveWaveEnemies = new Set();
+      archiveSpawnTimer=setInterval(()=>{
+        if(!archiveMode || gameState.baseHealth<=0){ clearInterval(archiveSpawnTimer); archiveSpawnTimer=null; return; }
+        let pool=['protect'];
+        const cave=selectedMap==='cave';
+        if(cave && archiveWave>=4) pool.push('protect');
+        if((cave&&archiveWave>=22)||(!cave&&archiveWave>=46)) pool.push('shooter');
+        if((cave&&archiveWave>=27)||(!cave&&archiveWave>=48)) pool.push('blaze');
+        if((cave&&archiveWave>=35)||(!cave&&archiveWave>=51)) pool.push('phishing');
+        if((cave&&archiveWave>=29)||(!cave&&archiveWave>=54)) pool.push('flock','flock','flock','flock','flock');
+        if((cave&&archiveWave>=34)||(!cave&&archiveWave>=58)) pool.push('rage');
+        const chosen=pool[Math.floor(Math.random()*pool.length)];
+        if(chosen==='flock'){ for(let f=0;f<5;f++) archiveSpawn('flock', archiveWaveEnemies); }
+        else archiveSpawn(chosen, archiveWaveEnemies);
+        if(++made>=total){ clearInterval(archiveSpawnTimer); archiveSpawnTimer=null; finishArchiveWaveIfReady(); }
+      },700);
+    }
+    function startArchiveBreak(){
+      if(!archiveMode || gameState.baseHealth<=0) return;
+      clearInterval(archiveBreakTimer);
+      let remaining=30;
+      archiveContinue.classList.add('hidden'); archiveContinue.classList.remove('flex');
+      const breakBox=document.createElement('div'); breakBox.id='archiveBreakBox';
+      breakBox.className='absolute inset-0 z-[125] flex items-center justify-center bg-black/75';
+      breakBox.innerHTML='<div class="w-[min(90%,30rem)] rounded-2xl border-2 border-cyan-500 bg-gray-900 p-7 text-center text-white"><div class="text-5xl mb-3">☕</div><h3 class="text-2xl font-bold text-cyan-300 mb-3">웨이브 준비</h3><p class="mb-4">다음 웨이브까지 <b id="archiveBreakSeconds" class="text-yellow-300">30</b>초</p><div class="flex gap-3"><button id="archiveShopBtn" class="flex-1 rounded-lg bg-purple-600 px-4 py-3 font-bold">🏪 업그레이드</button><button id="archiveSkipBtn" class="flex-1 rounded-lg bg-cyan-600 px-4 py-3 font-bold">⚡ 바로 시작</button></div></div>';
+      archiveScreen.appendChild(breakBox);
+      const finish=()=>{ clearInterval(archiveBreakTimer); breakBox.remove(); closeUpgradePanel(); startArchiveWave(); };
+      breakBox.querySelector('#archiveSkipBtn').onclick=finish;
+      breakBox.querySelector('#archiveShopBtn').onclick=()=>openUpgradePanel();
+      archiveBreakTimer=setInterval(()=>{ remaining--; const label=breakBox.querySelector('#archiveBreakSeconds'); if(label) label.textContent=remaining; if(remaining<=0) finish(); },1000);
+    }
+    function openArchive(section=0){
+      // 본 플로어의 적·루프·휴식 타이머를 먼저 멈춰 중복 진행을 차단합니다.
+      gameState.isRunning=false;
+      clearInterval(archiveBreakTimer); clearInterval(archiveWaveTimer); clearInterval(archiveSpawnTimer);
+      archiveBreakTimer=null; archiveWaveTimer=null; archiveSpawnTimer=null;
+      gameState.enemies.forEach(e=>e.element?.remove()); gameState.enemies=[];
+      archiveWaveEnemies.clear();
+      archiveMode=true; archiveSection=Math.max(0,Math.min(25,Number(section)||0)); archiveWave=1; archiveScreen.classList.remove('hidden'); archiveGameArea.querySelectorAll('.archive-face-paper,.enemy').forEach(el=>el.remove()); archiveGameArea.style.background=archiveSection>=1 ? 'linear-gradient(135deg,rgba(75,85,99,.5),rgba(31,41,55,.8)), repeating-linear-gradient(12deg,transparent 0 90px,rgba(255,255,255,.06) 91px 94px)' : 'rgba(75,85,99,.3)'; if(archiveSection>=1){ const paper=document.createElement('div'); paper.className='archive-face-paper absolute left-1/2 top-1/2 z-0 flex h-[70%] w-[52%] -translate-x-1/2 -translate-y-1/2 rotate-[-4deg] items-center justify-center rounded-sm bg-gray-200/80 text-[10rem] text-gray-700/40 shadow-2xl pointer-events-none'; paper.textContent='☻'; archiveGameArea.appendChild(paper); } startArchiveWave(); }
+    function finishArchiveSection(){ archiveMode=false; archiveContinue.classList.remove('hidden'); archiveContinue.classList.add('flex'); }
+    document.getElementById('archiveNoBtn')?.addEventListener('click',()=>{ archiveContinue.classList.add('hidden');archiveContinue.classList.remove('flex'); archiveMode=false; clearInterval(archiveBreakTimer); clearInterval(archiveWaveTimer); clearInterval(archiveSpawnTimer); archiveWaveEnemies.clear(); archiveGameArea.querySelectorAll('.enemy').forEach(el=>el.remove()); closeArchive(); startScreen.classList.remove('hidden'); });
+    document.getElementById('archiveYesBtn')?.addEventListener('click',()=>{ archiveContinue.classList.add('hidden');archiveContinue.classList.remove('flex'); if(archiveSection>=25){closeArchive();return;} const ok=document.createElement('div');ok.className='absolute inset-0 z-[130] flex items-center justify-center bg-black/70';ok.innerHTML='<div class="rounded-xl border-2 border-green-500 bg-[#063b22] p-6 text-center text-green-200"><p class="mb-4">다음 섹션으로 이동합니다.</p><div class="flex gap-3"><button id="approveArchive" class="rounded bg-green-600 px-4 py-2 font-bold">승인</button><button id="boostArchive" class="rounded bg-emerald-800 px-4 py-2 font-bold">강화 (50💰)</button></div></div>';archiveScreen.appendChild(ok);ok.querySelector('#approveArchive').onclick=()=>{ok.remove();archiveMode=true;archiveSection++;archiveWave=1;updateArchiveHud();startArchiveWave();};ok.querySelector('#boostArchive').onclick=()=>{if(gameState.money>=archiveSkipCost){gameState.money-=archiveSkipCost;archiveSkipCost=Math.floor(archiveSkipCost*1.3+10);ok.remove();archiveMode=true;archiveSection++;archiveWave=1;updateArchiveHud();startArchiveWave();}else{ok.querySelector('#boostArchive').textContent='💰 머니 부족';}}; });
+    function closeArchive(){ archiveMode=false; clearInterval(archiveBreakTimer); clearInterval(archiveWaveTimer); clearInterval(archiveSpawnTimer); archiveBreakTimer=null; archiveWaveTimer=null; archiveSpawnTimer=null; archiveWaveEnemies.clear(); archiveGameArea.querySelectorAll('.enemy,.archive-face-paper').forEach(el=>el.remove()); archiveScreen.classList.add('hidden'); upgradePanel.style.zIndex='60'; if(!gameOverScreen.classList.contains('hidden')||gameState.baseHealth<=0)return; gameState.isRunning=true;lastTime=performance.now();requestAnimationFrame(gameLoop); }
+    archiveGameArea.addEventListener('click',e=>{ if(e.target===archiveGameArea) finishArchiveWaveIfReady(); });
+
+    // 이벤트 리스너
+    gameArea.addEventListener('click', shoot);
+    document.addEventListener('keydown', e => {
+      const key=e.key.toLowerCase();
+      if (key==='x' && !e.shiftKey && !voidMode) { e.preventDefault(); showQuitPrompt(); }
+    });
+    const modifierPanel=document.getElementById('modifierPanel');
+    const achievementPanel=document.getElementById('achievementPanel');
+    const modifierBtn=document.getElementById('modifierBtn');
+    function updateAchievementUI(){
+      bestWaveReached=Math.max(bestWaveReached, Number(gameState.wave)||1);
+      if(bestWaveReached>=100) modifiersUnlocked=true;
+      Object.entries(achievementState).forEach(([key, achieved]) => {
+        const row=document.querySelector(`[data-achievement="${key}"]`);
+        if(row){
+          row.classList.toggle('border', achieved);
+          row.classList.toggle('border-green-500', achieved);
+          row.dataset.achieved = achieved ? 'true' : 'false';
+          const firstText = row.childNodes[0];
+          if (firstText && firstText.nodeType === Node.TEXT_NODE) {
+            firstText.textContent = firstText.textContent.replace(/^\s*[✅🔒]\s*/, ' ');
+            firstText.textContent = (achieved ? ' ✅ ' : ' 🔒 ') + firstText.textContent.trim();
+          }
+        }
+      });
+      document.getElementById('achievementProgress').textContent=`최고 웨이브: ${bestWaveReached} · ${modifiersUnlocked?'수정자 해금 완료':'수정자 잠금'}`;
+      document.getElementById('modifierLock').textContent=modifiersUnlocked?'✅':'🔒';
+      modifierBtn.disabled=!modifiersUnlocked;
+      modifierBtn.classList.toggle('opacity-50',!modifiersUnlocked);
+      modifierBtn.classList.toggle('cursor-not-allowed',!modifiersUnlocked);
+      const list=document.getElementById('achievementCheatList');
+      if(list && !list.children.length) Object.keys(achievementState).forEach(key=>{ const b=document.createElement('button'); b.dataset.achievementCheat=key; b.className='w-full rounded bg-gray-700 px-2 py-1 text-left'; b.onclick=()=>{ achievementState[key]=!achievementState[key]; updateAchievementUI(); }; list.appendChild(b); });
+      if(list) Object.keys(achievementState).forEach(key=>{ const b=list.querySelector(`[data-achievement-cheat="${key}"]`); if(b) b.textContent=`${achievementState[key]?'✅':'🔒'} ${key}`; });
+    }
+    document.getElementById('achievementBtn').addEventListener('click',()=>{ updateAchievementUI(); achievementPanel.classList.remove('hidden'); achievementPanel.classList.add('flex'); });
+    document.getElementById('closeAchievementBtn').addEventListener('click',()=>{ achievementPanel.classList.add('hidden'); achievementPanel.classList.remove('flex'); });
+    modifierBtn.addEventListener('click',()=>{ if(!modifiersUnlocked){ updateAchievementUI(); return; } modifierPanel.classList.remove('hidden'); modifierPanel.classList.add('flex'); });
+    document.getElementById('closeModifierBtn').addEventListener('click',()=>{ modifierPanel.classList.add('hidden'); modifierPanel.classList.remove('flex'); });
+    document.getElementById('applyModifierBtn').addEventListener('click',()=>{ document.querySelectorAll('.modifier-check').forEach(c=>c.checked?activeModifiers.add(c.dataset.mod):activeModifiers.delete(c.dataset.mod)); modifierPanel.classList.add('hidden'); modifierPanel.classList.remove('flex'); });
+    document.getElementById('applyCheatModifiers').addEventListener('click',()=>{ document.querySelectorAll('.cheat-modifier').forEach(c=>c.checked?activeModifiers.add(c.dataset.mod):activeModifiers.delete(c.dataset.mod)); document.querySelectorAll('.modifier-check').forEach(c=>c.checked=activeModifiers.has(c.dataset.mod)); });
+    document.getElementById('unlockAllAchievements').addEventListener('click',()=>{ Object.keys(achievementState).forEach(k=>achievementState[k]=true); modifiersUnlocked=true; updateAchievementUI(); });
+    document.getElementById('clearAllAchievements').addEventListener('click',()=>{ Object.keys(achievementState).forEach(k=>achievementState[k]=false); modifiersUnlocked=false; updateAchievementUI(); });
+    const startButton = document.getElementById('startBtn');
+    function handleStartButton(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      if (startButton.dataset.starting === 'true') return;
+      if (startButton.dataset.startedAt && Date.now() - Number(startButton.dataset.startedAt) < 500) return;
+      startButton.dataset.startedAt = String(Date.now());
+      startButton.dataset.starting = 'true';
+      startButton.disabled = true;
+      startButton.textContent = '⏳ 시작 중...';
+
+      archiveMode = false;
+      voidMode = false;
+      bugFloor = false;
+      archiveScreen.classList.add('hidden');
+      archiveContinue.classList.add('hidden');
+      archiveContinue.classList.remove('flex');
+      cheatPanel.classList.add('hidden');
+      waveBreakScreen.classList.add('hidden');
+      gameOverScreen.classList.add('hidden');
+      upgradePanel.style.transform = 'translateX(100%)';
+      document.getElementById('gameContainer').classList.remove('void-mode');
+      document.getElementById('voidTitle').classList.add('hidden');
+      base.style.display = '';
+      gameArea.style.background = selectedMap === 'cave' ? 'radial-gradient(circle at 30% 40%, #374151, #111827)' : selectedMap === 'beach' ? 'linear-gradient(90deg,#0ea5e9 0%,#38bdf8 68%,#f2c078 68%,#e7b66a 100%)' : 'linear-gradient(135deg,#14532d,#1a472a)';
+      startScreen.classList.add('hidden');
+      try {
+        startGame();
+      } catch (error) {
+        gameState.isRunning = true;
+        gameState.wave = 1;
+        waveDisplay.textContent = '1';
+        lastTime = performance.now();
+        startWave();
+        requestAnimationFrame(gameLoop);
+      }
+      startButton.dataset.starting = 'false';
+      startButton.disabled = false;
+      startButton.textContent = '🚀 게임 시작';
+    }
+    // 시작 버튼은 클릭·터치·키보드를 모두 같은 경로로 처리합니다.
+    let startInputLocked = false;
+    function startFromAnyInput(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      if (startInputLocked || startButton.disabled) return;
+      startInputLocked = true;
+      handleStartButton(event);
+      setTimeout(() => { startInputLocked = false; }, 600);
+    }
+    window.__startDefenseGame = startFromAnyInput;
+    document.addEventListener('pointerdown', (event) => {
+      const target = event.target instanceof Element ? event.target.closest('#startBtn') : null;
+      if (!target || startScreen.classList.contains('hidden')) return;
+      startFromAnyInput(event);
+    }, { capture: true, passive: false });
+    document.addEventListener('click', (event) => {
+      const target = event.target instanceof Element ? event.target.closest('#startBtn') : null;
+      if (!target || startScreen.classList.contains('hidden')) return;
+      if (!startButton.dataset.startedAt || Date.now() - Number(startButton.dataset.startedAt) > 600) {
+        startFromAnyInput(event);
+      }
+    }, { capture: true });
+    startButton.addEventListener('pointerdown', startFromAnyInput, { passive: false });
+    startButton.addEventListener('click', (event) => {
+      if (!startButton.dataset.startedAt || Date.now() - Number(startButton.dataset.startedAt) > 600) {
+        startFromAnyInput(event);
+      }
+    });
+    startButton.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') startFromAnyInput(event);
+    });
+    startScreen.addEventListener('pointerdown', (event) => {
+      if (event.target === startButton || event.target.closest('#startBtn')) {
+        startFromAnyInput(event);
+      }
+    }, { passive: false });
+    document.getElementById('restartBtn').addEventListener('click', (event) => {
+      event.preventDefault();
+      startGame();
+    });
+    document.getElementById('upgradeBtn').addEventListener('click', upgrade);
+    document.getElementById('baseUpgradeBtn').addEventListener('click', () => buyMeta('base'));
+    document.getElementById('damageUpgradeBtn').addEventListener('click', () => buyMeta('damage'));
+    document.getElementById('slowUpgradeBtn').addEventListener('click', () => buyMeta('slow'));
+    document.getElementById('thornUpgradeBtn').addEventListener('click', () => buyMeta('thorn'));
+    document.getElementById('turretUpgradeBtn').addEventListener('click', buyTurret);
+    document.getElementById('detectorBtn').addEventListener('click', () => { if (!metaUpgrades.detector && gameState.wave >= 25 && gameState.money >= 1000) { gameState.money -= 1000; metaUpgrades.detector = true; updateUI(); } });
+    document.getElementById('armorBreakBtn').addEventListener('click', () => { if (!metaUpgrades.armorBreak && gameState.wave >= 40 && gameState.money >= 3000) { gameState.money -= 3000; metaUpgrades.armorBreak = true; updateUI(); } });
+    document.getElementById('rifleBtn').addEventListener('click', () => selectWeapon('rifle'));
+    document.getElementById('breakShopBtn').addEventListener('click', openUpgradePanel);
+    document.getElementById('closePanelBtn').addEventListener('click', closeUpgradePanel);
+    document.querySelectorAll('.map-btn').forEach(btn => btn.addEventListener('click', () => {
+      selectedMap = btn.dataset.map;
+      document.querySelectorAll('.map-btn').forEach(other => other.classList.replace('border-green-300', 'border-transparent'));
+      btn.classList.replace('border-transparent', 'border-green-300');
+      gameArea.style.background = selectedMap === 'cave' ? 'radial-gradient(circle at 30% 40%, #374151, #111827)' : selectedMap === 'beach' ? 'linear-gradient(90deg,#0ea5e9 0%,#38bdf8 68%,#f2c078 68%,#e7b66a 100%)' : 'linear-gradient(135deg,#14532d,#1a472a)';
+    }));
+    
+    // 치트·적 정보 패널
+    const enemyInfoPanel = document.getElementById('enemyInfoPanel');
+    const cheatPanel = document.getElementById('cheatPanel');
+    function showEnemyInfo(enemy) {
+      const names = {normal:'노멀',fast:'스피드',slow:'슬로우',haste:'헤이스트',regen:'리젠',revive:'리바이브',dummy:'더미',leader:'리더',bug:'버그',hide:'하이드',metal:'메탈',darkSplitter:'다크 스플리터',cyborg:'사이보그'};
+      const effectNames = {tough:'단단함',bulletproof:'방탄',absolute:'절대 방어',haste:'재빠름',boss:'보스'};
+      const effects = enemy.effect ? (effectNames[enemy.effect] || enemy.effect) : '없음';
+      const incomingDamage = enemy.damage > 0 ? enemy.damage : 0;
+      const effectiveDamage = gameState.damage * weaponStats.rifle.damage * (1 + metaUpgrades.damage * 0.1) * (1 - (enemy.armor || 0)) * (enemy.boss ? 0.75 : 1);
+      enemyInfoPanel.innerHTML = `<div class="text-lg font-bold text-yellow-300 mb-2">${names[enemy.type] || enemy.type}</div><div>❤️ 체력: ${formatNumber(enemy.health)} / ${formatNumber(enemy.maxHealth)}</div>${enemy.maxShield ? `<div class="text-cyan-300">🛡️ 보호막: ${formatNumber(enemy.shield)} /${formatNumber(enemy.maxShield)}</div>` : ''}<div class="text-orange-300">💨 속도: ${formatNumber(enemy.speed / 60)}</div><div class="text-red-300 font-bold mt-1">받는 피해: ${formatNumber(effectiveDamage)}</div><div class="text-rose-300">공격 피해: ${formatNumber(incomingDamage)}</div><div class="text-rose-300 mt-1">효과: ${effects}</div>`;
+    }
+    function resetEnemyInfo() { enemyInfoPanel.innerHTML = '<div class="text-4xl text-center mb-2">?</div><div class="text-center text-gray-400 text-sm">적에게 커서를 올려 정보 보기</div>'; }
+    function openCheat() {
+      const archiveVisible = !archiveScreen.classList.contains('hidden') || !archiveContinue.classList.contains('hidden');
+      if (!gameState.isRunning && !archiveMode && !archiveVisible) return;
+      if (!archiveMode) gameState.isRunning = false;
+      cheatPanel.classList.remove('hidden');
+    }
+    function closeCheat() { cheatPanel.classList.add('hidden'); if (archiveMode || !gameOverScreen.classList.contains('hidden') || gameState.baseHealth <= 0) return; gameState.isRunning = true; lastTime = performance.now(); spawnTimer = 0; requestAnimationFrame(gameLoop); }
+    document.addEventListener('keydown', e => {
+      const cheatKey = e.key.toLowerCase() === 'p' && !e.shiftKey;
+      if (cheatKey) { e.preventDefault(); cheatPanel.classList.contains('hidden') ? openCheat() : closeCheat(); }
+    });
+    document.getElementById('closeCheatBtn').addEventListener('click', closeCheat);
+    document.getElementById('closeArchiveBtn')?.addEventListener('click', closeArchive);
+    document.getElementById('mobileCheatBtn').addEventListener('click', openCheat);
+    document.getElementById('mobileQuitBtn').addEventListener('click', showQuitPrompt);
+    document.getElementById('applyWaveCheat').addEventListener('click', () => { const rawWave = String(document.getElementById('cheatWave').value || '').trim(); if (rawWave.toLowerCase() === 'archive') { document.getElementById('removeEnemyHint').textContent = '기록실 콘텐츠는 삭제되었습니다.'; return; } if (rawWave.toLowerCase() === 'bug') { bugFloor = true; voidMode = false; archiveMode = false; document.getElementById('gameContainer').classList.remove('void-mode'); document.getElementById('voidTitle').classList.add('hidden'); base.style.display = ''; gameState.wave = 44; waveDisplay.textContent = 'BUG FLOOR'; gameState.enemies.forEach(e => e.element.remove()); gameState.enemies = []; enemiesThisWave = Infinity; enemiesSpawnedThisWave = 0; gameState.isRunning = true; closeCheat(); lastTime = performance.now(); requestAnimationFrame(gameLoop); return; } const requested = Number(rawWave); if (rawWave.toLowerCase() === 'void' || requested === -1) { bugFloor = false; archiveMode = false; clearInterval(archiveBreakTimer); clearInterval(archiveSpawnTimer); archiveMode = false; voidMode = true; gameState.wave = 1; gameState.isRunning = true; document.getElementById('gameContainer').classList.add('void-mode'); document.getElementById('voidTitle').classList.remove('hidden'); document.getElementById('voidWaveLabel').textContent = '1'; base.style.display = 'none'; gameArea.style.background = '#000'; gameState.enemies.forEach(e => e.element.remove()); gameState.enemies = []; enemiesThisWave = 28; enemiesSpawnedThisWave = 0; closeCheat(); lastTime = performance.now(); requestAnimationFrame(gameLoop); return; } const n = Math.max(1, requested || 1); bugFloor = false; archiveMode = false; voidMode = false; document.getElementById('gameContainer').classList.remove('void-mode'); document.getElementById('voidTitle').classList.add('hidden'); base.style.display = ''; gameState.wave = n; waveDisplay.textContent = n; gameState.enemies.forEach(e => e.element.remove()); gameState.enemies = []; startWave(); updateAchievementUI(); updateUI(); closeCheat(); });
+    document.getElementById('applyUpgradeCheat').addEventListener('click', () => { metaUpgrades.base = Math.max(0, Number(document.getElementById('cheatBase').value) || 0); metaUpgrades.damage = Math.max(0, Number(document.getElementById('cheatDamage').value) || 0); metaUpgrades.slow = Math.max(0, Math.min(2, Number(document.getElementById('cheatSlow').value) || 0)); metaUpgrades.thorn = Math.max(0, Math.min(4, Number(document.getElementById('cheatThorn').value) || 0)); turretOwned = document.getElementById('cheatTurret').checked; metaUpgrades.detector = document.getElementById('cheatDetector').checked; metaUpgrades.armorBreak = document.getElementById('cheatArmorBreak').checked; const previousMaxHealth = gameState.maxHealth; gameState.maxHealth = 100 + metaUpgrades.base * 10; gameState.baseHealth = Math.min(gameState.maxHealth, gameState.baseHealth + Math.max(0, gameState.maxHealth - previousMaxHealth)); updateHealthDisplay(); updateUI(); });
+    document.getElementById('applyRifleCheat').addEventListener('click', () => { gameState.damage = Math.max(0.1, Number(document.getElementById('cheatGunDamage').value) || 1.5); const rate = Math.max(0.1, Number(document.getElementById('cheatGunRate').value) || 4); gameState.fireRate = 1000 / rate; updateUI(); });
+    document.getElementById('infiniteMoneyCheat').addEventListener('click', () => { gameState.money = 999999999; updateUI(); });
+    document.getElementById('applyMoneyCheat').addEventListener('click', () => { const raw = Number(document.getElementById('moneyCheatN').value); const n = Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : 0; const op = document.getElementById('moneyCheatOp').value; const current = safeMoney(gameState.money); if (op === '+') gameState.money = current + n; else if (op === '-') gameState.money = current - n; else if (op === '*') gameState.money = current * n; else if (n > 0) gameState.money = Math.floor(current / n); gameState.money = safeMoney(gameState.money); updateUI(); });
+    document.getElementById('endWaveCheat').addEventListener('click', () => { gameState.enemies.slice().forEach(e => removeEnemy(gameState.enemies.indexOf(e))); enemiesSpawnedThisWave = enemiesThisWave; gameState.isRunning = false; startWaveBreak(); closeCheat(); });
+  
+    document.getElementById('openSpawnCheat').addEventListener('click', () => { 
+      document.getElementById('spawnSettings').classList.toggle('hidden'); 
+      
+      const names = {
+        ...(voidMode ? {
+          haste:'헤이스트 ⚡',
+          regen:'리젠 🧬',
+          revive:'리바이브 ♻️',
+          dummy:'더미 🎭',
+          leader:'리더 👑',
+          bug:'버그 🐛',
+          hide:'하이드 👤',
+          metal:'메탈 ⚙️',
+          darkSplitter:'다크 스플리터 ⚫',
+          cyborg:'사이보그 🤖',
+          glitch:'글리치 🌀',
+          glitchPhantom:'글리치의 환영 👁️️'
+        } : {
+          normal:'노멀 👹',
+          slow:'슬로우 👺',
+          fast:'스피드 😈',
+          shield:'실드 🛡️',
+          heavy:'헤비 🗿',
+          splitterA:'스플리터A 🟢',
+          splitterB:'스플리터B 🟠',
+          splitterC:'스플리터C 🟣',
+          haste:'헤이스트 ⚡',
+          regen:'리젠 🧬',
+          revive:'리바이브 ♻️',
+          dummy:'더미 🎭',
+          leader:'리더 👑',
+          bug:'버그 🐛',
+          hide:'하이드 👤',
+          metal:'메탈 ⚙️',
+          darkSplitter:'다크 스플리터 ⚫',
+          cyborg:'사이보그 🤖',
+          glitch:'글리치 🌀',
+          glitchPhantom:'글리치의 환영 👁️'
+        }),
+        protect:'프로텍트 🪖',
+        shooter:'슈터 🏹',
+        blaze:'블레이즈 🔥',
+        phishing:'피싱 💰',
+        flock:'플록 🎃',
+        random:'랜덤 ❓',
+        rage:'레이지 😡'
+      }; 
+
+      const box = document.getElementById('spawnChoices') || document.createElement('div'); 
+      box.id = 'spawnChoices'; 
+      box.className = 'grid grid-cols-2 gap-2 mt-3'; 
+      box.innerHTML = '<div class="col-span-2 text-xs text-emerald-300 font-bold">스폰할 적을 선택하세요</div>' + 
+        Object.entries(names).map(([key,label]) => `<button type="button" class="bg-gray-700 hover:bg-gray-600 rounded px-2 py-2 text-sm" data-spawn="${key}">${label}</button>`).join(''); 
+      
+      if (!box.parentElement) document.getElementById('openSpawnCheat').after(box); 
+      
+      box.querySelectorAll('button').forEach(btn => btn.onclick = () => { 
+        if (archiveMode) archiveSpawn(btn.dataset.spawn); 
+        else spawnEnemy(btn.dataset.spawn); 
+        document.getElementById('removeEnemyHint').textContent = labelForSpawn(btn.dataset.spawn) + ' 적을 1마리 소환했습니다.'; 
+      }); 
+    });
+    
+    let removeEnemyMode = false;
+    function labelForSpawn(type) { return ({normal:'노멀',slow:'슬로우',fast:'스피드',shield:'실드',heavy:'헤비',splitterA:'스플리터A',splitterB:'스플리터B',splitterC:'스플리터C',haste:'헤이스트',regen:'리젠',revive:'리바이브',dummy:'더미',leader:'리더',bug:'버그',hide:'하이드',metal:'메탈',darkSplitter:'다크 스플리터',cyborg:'사이보그',glitch:'글리치',glitchPhantom:'글리치의 환영',voidPulse:'VOID 펄스',voidGuard:'VOID GUARD',voider:'VOIDER',darkVoid:'DARK VOID'})[type] || type; }
+    function removeAllEnemiesCheat() { gameState.enemies.slice().forEach(enemy => removeEnemy(gameState.enemies.indexOf(enemy))); document.getElementById('removeEnemyHint').textContent = '현재 화면의 적을 모두 제거했습니다.'; checkWaveProgress(); }
+    document.getElementById('removeAllEnemiesCheat').addEventListener('click', removeAllEnemiesCheat);
+    document.getElementById('toggleRemoveEnemyCheat').addEventListener('click', () => { removeEnemyMode = !removeEnemyMode; const btn = document.getElementById('toggleRemoveEnemyCheat'); btn.textContent = removeEnemyMode ? '🎯 클릭 제거: 켜짐' : '🎯 클릭 제거: 꺼짐'; btn.classList.toggle('ring-2', removeEnemyMode); btn.classList.toggle('ring-rose-300', removeEnemyMode); document.getElementById('removeEnemyHint').textContent = removeEnemyMode ? '게임 화면에서 적을 클릭하면 즉시 제거됩니다.' : '전체 제거 또는 클릭 제거 모드를 사용할 수 있습니다.'; });
+    gameArea.addEventListener('click', e => { if (!removeEnemyMode) return; const el = e.target.closest('.enemy'); if (!el) return; const enemy = gameState.enemies.find(x => x.id == el.dataset.enemyId); if (enemy) { removeEnemy(gameState.enemies.indexOf(enemy)); document.getElementById('removeEnemyHint').textContent = labelForSpawn(enemy.type) + ' 적을 제거했습니다.'; checkWaveProgress(); } });
+    gameArea.addEventListener('mouseover', e => { const el = e.target.closest('.enemy'); if (!el) return; const enemy = gameState.enemies.find(x => x.id == el.dataset.enemyId); if (enemy) showEnemyInfo(enemy); });
+    gameArea.addEventListener('mouseout', e => { if (e.target.closest('.enemy') && !e.relatedTarget?.closest('.enemy')) resetEnemyInfo(); });
+
+    // 메인 화면 입력 안전장치
+    const startSurface = document.getElementById('startScreen');
+    const startCard = startSurface?.firstElementChild;
+    if (startSurface) {
+      startSurface.style.pointerEvents = 'auto';
+      startSurface.style.zIndex = '9999';
+      if (startCard) {
+        startCard.style.pointerEvents = 'auto';
+        startCard.style.zIndex = '10000';
+      }
+    }
+    function handleMainMenuTarget(event) {
+      if (!startSurface || startSurface.classList.contains('hidden')) return;
+      const source = event.target;
+      const target = source && typeof source.closest === 'function' ? source.closest('button') : null;
+      if (!target || !startSurface.contains(target)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (target.id === 'startBtn') {
+        startFromAnyInput(event);
+      } else if (target.id === 'achievementBtn') {
+        updateAchievementUI();
+        achievementPanel.classList.remove('hidden');
+        achievementPanel.classList.add('flex');
+      } else if (target.id === 'modifierBtn') {
+        if (modifiersUnlocked) {
+          modifierPanel.classList.remove('hidden');
+          modifierPanel.classList.add('flex');
+        } else {
+          updateAchievementUI();
+        }
+      } else if (target.classList.contains('map-btn')) {
+        selectedMap = target.dataset.map || 'forest';
+        document.querySelectorAll('.map-btn').forEach((button) => {
+          button.classList.remove('border-green-300');
+          button.classList.add('border-transparent');
+        });
+        target.classList.remove('border-transparent');
+        target.classList.add('border-green-300');
+        gameArea.style.background = selectedMap === 'cave'
+          ? 'radial-gradient(circle at 30% 40%, #374151, #111827)'
+          : selectedMap === 'beach'
+            ? 'linear-gradient(90deg,#0ea5e9 0%,#38bdf8 68%,#f2c078 68%,#e7b66a 100%)'
+            : 'linear-gradient(135deg,#14532d,#1a472a)';
+      }
+    }
+    document.addEventListener('pointerup', handleMainMenuTarget, { capture: true, passive: false });
+    document.addEventListener('touchend', handleMainMenuTarget, { capture: true, passive: false });
+    document.addEventListener('click', handleMainMenuTarget, true);
+
+    updateAchievementUI();
+  </script>
+ </body>
+</html>
